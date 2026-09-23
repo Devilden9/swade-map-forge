@@ -1,0 +1,113 @@
+d> Привязка к сетке</label>
+ </div>
+ <div class="hint"><b>Как пользоваться:</b><br>1. Выбери «Токен», «Стена» и т.п.<br>2. Кликни по карте.<br>3. Переключись на «Выбор» и перетаскивай объект.<br><br>Колесо — масштаб. Средняя кнопка мыши — камера. Delete — удалить.</div>
+</aside>
+
+<main class="stage" id="stage">
+ <div class="world" id="world"><div class="map" id="map"><div class="grid" id="grid"></div></div></div>
+ <div id="measureLine" class="measure hidden"></div><div id="measureLabel" class="measureLabel hidden"></div>
+
+
+ <div class="mpPanel hidden" id="mpPanel">
+  <h2>🌐 Общая игровая комната</h2>
+  <label>Твоё имя</label><input id="playerName" type="text" value="Игрок">
+  <div class="mpLine">
+   <div><label>Код комнаты</label><input id="roomCode" type="text" placeholder="например KLEIN42"></div>
+   <button id="joinRoom">Войти</button>
+  </div>
+  <button id="createRoom" style="width:100%;margin-top:8px">Создать новую комнату</button>
+  <button id="copyInvite" style="width:100%;margin-top:8px" disabled>Скопировать приглашение</button>
+  <div class="players" id="players">Не подключено.</div>
+  <p class="hint">Карта, токены и броски кубов синхронизируются между участниками комнаты. Создатель комнаты становится GM.</p>
+ </div>
+
+ <div class="dicePanel hidden" id="dicePanel">
+  <h2>🎲 Savage Worlds — Кубы</h2>
+  <div class="diceRow">
+   <button class="dieBtn" data-die="4">d4</button><button class="dieBtn" data-die="6">d6</button>
+   <button class="dieBtn" data-die="8">d8</button><button class="dieBtn" data-die="10">d10</button>
+   <button class="dieBtn" data-die="12">d12</button><button class="dieBtn" data-die="20">d20</button>
+  </div>
+  <div class="diceOptions">
+   <div><label>Куб характеристики</label><select id="traitDie"><option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option></select></div>
+   <div><label>Модификатор</label><input id="diceMod" type="number" value="0"></div>
+  </div>
+  <label><input id="wildDie" type="checkbox" checked> Wild Die d6</label>
+  <label><input id="acing" type="checkbox" checked> Взрывающиеся кубы (Acing)</label>
+  <button id="traitRoll" style="width:100%;margin-top:8px">Бросок характеристики / навыка</button>
+  <div class="diceResult">
+   <div class="diceBig" id="diceBig">—</div>
+   <div class="diceSub" id="diceSub">Выбери куб или сделай Trait Roll</div>
+  </div>
+  <div class="diceHistory" id="diceHistory"></div>
+  <button id="clearDice" style="width:100%;margin-top:8px">Очистить историю</button>
+ </div>
+
+ <div id="toast">Выбери инструмент слева и кликни по карте</div>
+</main>
+
+<aside class="right">
+ <div class="section"><h3>Выбранный объект</h3>
+  <div id="none" class="hint">Ничего не выбрано.</div>
+  <div id="props" class="hidden">
+   <label>Название</label><input id="pName" type="text">
+   <div class="row"><div><label>X</label><input id="pX" type="number"></div><div><label>Y</label><input id="pY" type="number"></div></div>
+   <div class="row"><div><label>Ширина</label><input id="pW" type="number"></div><div><label>Высота</label><input id="pH" type="number"></div></div>
+   <label>Поворот, °</label><input id="pR" type="number">
+   <button id="delete" style="width:100%;margin-top:10px">Удалить</button>
+  </div>
+ </div>
+ <div class="section"><h3>SWADE</h3>
+  <label>Размер Blast</label><select id="blastSize"><option value="1">Small</option><option value="2" selected>Medium</option><option value="3">Large</option></select>
+  <p class="hint">Blast и Cone размещаются поверх карты как шаблоны области.</p>
+ </div>
+</aside>
+</div>
+</div>
+<script>
+"use strict";
+const $=q=>document.querySelector(q);
+const stage=$("#stage"),world=$("#world"),map=$("#map"),grid=$("#grid");
+let state={cols:30,rows:22,cell:48,items:[]};
+let tool="select",selected=null,zoom=1,panX=35,panY=35,drag=null,history=[],future=[];
+
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const snap=v=>$("#snap").checked?Math.round(v/state.cell)*state.cell:v;
+const current=()=>state.items.find(i=>i.id===selected);
+
+function remember(){history.push(JSON.stringify(state));if(history.length>80)history.shift();future=[]}
+function syncInputs(){$("#cols").value=state.cols;$("#rows").value=state.rows;$("#cell").value=state.cell}
+function render(){
+ map.style.width=(state.cols*state.cell)+"px"; map.style.height=(state.rows*state.cell)+"px";
+ grid.style.backgroundSize=state.cell+"px "+state.cell+"px"; grid.style.display=$("#gridToggle").checked?"block":"none";
+ world.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;
+ map.querySelectorAll(".entity").forEach(e=>e.remove());
+ for(const it of state.items){
+   const e=document.createElement("div"); e.className="entity "+it.type+(it.id===selected?" selected":"");
+   e.dataset.id=it.id; e.style.left=it.x+"px";e.style.top=it.y+"px";e.style.width=it.w+"px";e.style.height=it.h+"px";e.style.transform=`rotate(${it.r||0}deg)`;
+   if(it.type==="token")e.textContent=it.name||"PC"; if(it.type==="prop")e.textContent=it.name||"OBJ";
+   map.appendChild(e);
+ }
+ updateProps(); $("#status").textContent=Math.round(zoom*100)+"%";
+}
+function updateProps(){
+ const it=current(),has=!!it; $("#none").classList.toggle("hidden",has);$("#props").classList.toggle("hidden",!has);
+ if(!it)return; $("#pName").value=it.name||"";$("#pX").value=Math.round(it.x);$("#pY").value=Math.round(it.y);$("#pW").value=Math.round(it.w);$("#pH").value=Math.round(it.h);$("#pR").value=it.r||0;
+}
+function local(ev){const r=stage.getBoundingClientRect();return{x:(ev.clientX-r.left-panX)/zoom,y:(ev.clientY-r.top-panY)/zoom}}
+function add(type,x,y){
+ remember();const c=state.cell;let w=c,h=c,name="";
+ if(type==="wall"){w=c*3;h=Math.max(8,c*.18)}
+ if(type==="door"){w=c;h=Math.max(10,c*.22)}
+ if(type==="fog"){w=c*4;h=c*3}
+ if(type==="blast"){const n=Number($("#blastSize").value);w=h=c*n*2}
+ if(type==="cone"){w=c*4;h=c*3}
+ if(type==="token")name="PC";
+ const it={id:uid(),type,x:snap(x-w/2),y:snap(y-h/2),w,h,r:0,name};state.items.push(it);selected=it.id;render();
+}
+map.addEventListener("pointerdown",ev=>{
+ ev.preventDefault();const p=local(ev),hit=ev.target.closest(".entity");
+ if(tool==="pan"||ev.button===1){drag={kind:"pan",sx:ev.clientX,sy:ev.clientY,px:panX,py:panY};stage.setPointerCapture?.(ev.pointerId);return}
+ if(tool==="erase"){if(hit){remember();state.items=state.items.filter(i=>i.id!==hit.dataset.id);selected=null;render()}return}
+ if(tool==="measure"){drag={kind:"measure",start:p};showMeasure(p,p);return}
+ if(tool==="s
