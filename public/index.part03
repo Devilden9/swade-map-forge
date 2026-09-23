@@ -1,0 +1,89 @@
+("Обычный бросок: "+total,diceSub.textContent);
+}));
+$("#traitRoll").addEventListener("click",()=>{
+ const sides=Number($("#traitDie").value),mod=Number($("#diceMod").value)||0,ace=$("#acing").checked;
+ const trait=rollOne(sides,ace),useWild=$("#wildDie").checked,wild=useWild?rollOne(6,ace):null;
+ const traitTotal=trait.total+mod,wildTotal=wild?wild.total+mod:-Infinity,total=Math.max(traitTotal,wildTotal);
+ const oc=outcome(total);
+ diceBig.textContent=total;
+ let detail=rollText(trait)+(mod?` ${mod>=0?"+":""}${mod}`:"");
+ if(wild)detail+=" | Wild "+rollText(wild)+(mod?` ${mod>=0?"+":""}${mod}`:"");
+ detail+=" → "+oc.text;
+ diceSub.textContent=detail;
+ addHist("Trait Roll: "+total,detail,oc.cls);
+});
+$("#clearDice").addEventListener("click",()=>{diceHistory.innerHTML="";diceBig.textContent="—";diceSub.textContent="История очищена"});
+
+
+// ---- Multiplayer client ----
+const mpPanel=$("#mpPanel"), netState=$("#netState"), playersBox=$("#players");
+let socket=null, room="", myClientId="", isGM=false, applyingRemote=false, syncTimer=null;
+
+$("#mpToggle").addEventListener("click",()=>mpPanel.classList.toggle("hidden"));
+
+function makeRoomCode(){
+ const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s="";
+ for(let i=0;i<6;i++)s+=chars[Math.floor(Math.random()*chars.length)];
+ return s;
+}
+function connectRoom(code){
+ code=(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
+ if(!code)return alert("Введите код комнаты.");
+ room=code; $("#roomCode").value=room;
+ if(socket)socket.close();
+ const proto=location.protocol==="https:"?"wss":"ws";
+ socket=new WebSocket(`${proto}://${location.host}/ws`);
+ netState.textContent="Подключение…";
+ socket.onopen=()=>{
+   socket.send(JSON.stringify({type:"join",room,name:$("#playerName").value.trim()||"Игрок"}));
+ };
+ socket.onmessage=ev=>{
+   let msg; try{msg=JSON.parse(ev.data)}catch{return}
+   if(msg.type==="welcome"){
+     myClientId=msg.clientId;isGM=!!msg.isGM;netState.textContent=`Комната ${room}${isGM?" · GM":""}`;
+     $("#copyInvite").disabled=false;
+     if(msg.state){applyingRemote=true;state=msg.state;selected=null;syncInputs();render();applyingRemote=false}
+   } else if(msg.type==="state" && msg.clientId!==myClientId){
+     applyingRemote=true;state=msg.state;selected=null;syncInputs();render();applyingRemote=false;
+   } else if(msg.type==="players"){
+     playersBox.innerHTML=msg.players.map(p=>`<div><span class="onlineDot"></span>${escapeHtml(p.name)}${p.isGM?" — GM":""}</div>`).join("");
+   } else if(msg.type==="dice" && msg.clientId!==myClientId){
+     dicePanel.classList.remove("hidden");diceBig.textContent=msg.total;diceSub.textContent=msg.detail;
+     applyingRemote=true;
+     originalAddHist(escapeHtml(msg.name)+" — "+escapeHtml(msg.title),escapeHtml(msg.detail),msg.cls||"");
+     applyingRemote=false;
+   } else if(msg.type==="error"){alert(msg.message)}
+ };
+ socket.onclose=()=>{netState.textContent="Офлайн";playersBox.textContent="Соединение закрыто."};
+ socket.onerror=()=>{netState.textContent="Ошибка сети"};
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function broadcastState(){
+ if(applyingRemote||!socket||socket.readyState!==1||!room)return;
+ clearTimeout(syncTimer);syncTimer=setTimeout(()=>socket.send(JSON.stringify({type:"state",room,state})),45);
+}
+function broadcastDice(title,total,detail,cls=""){
+ if(socket&&socket.readyState===1&&room)socket.send(JSON.stringify({type:"dice",room,title,total,detail,cls}));
+}
+$("#createRoom").addEventListener("click",()=>connectRoom(makeRoomCode()));
+$("#joinRoom").addEventListener("click",()=>connectRoom($("#roomCode").value));
+$("#copyInvite").addEventListener("click",async()=>{
+ const u=new URL(location.href);u.searchParams.set("room",room);
+ try{await navigator.clipboard.writeText(u.toString());$("#copyInvite").textContent="Ссылка скопирована";setTimeout(()=>$("#copyInvite").textContent="Скопировать приглашение",1500)}
+ catch{prompt("Скопируйте ссылку:",u.toString())}
+});
+
+// Hook state-changing render calls into network synchronization.
+const originalRender=render;
+render=function(){originalRender();broadcastState()};
+
+// Broadcast dice rolls by wrapping history insertion.
+const originalAddHist=addHist;
+addHist=function(title,detail,cls=""){originalAddHist(title,detail,cls);if(!applyingRemote){const total=diceBig.textContent;broadcastDice(title,total,detail,cls)}};
+
+const roomFromUrl=new URL(location.href).searchParams.get("room");
+if(roomFromUrl){$("#roomCode").value=roomFromUrl.toUpperCase();mpPanel.classList.remove("hidden")}
+
+</script>
+</body>
+</html>
