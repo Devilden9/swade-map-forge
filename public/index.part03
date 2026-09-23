@@ -17,7 +17,7 @@ $("#clearDice").addEventListener("click",()=>{diceHistory.innerHTML="";diceBig.t
 
 // ---- Multiplayer client ----
 const mpPanel=$("#mpPanel"), netState=$("#netState"), playersBox=$("#players");
-let socket=null, room="", myClientId="", isGM=false, applyingRemote=false, syncTimer=null;
+let socket=null, room="", myClientId="", isGM=false, applyingRemote=false, syncTimer=null, myTokenId=null, turnClientId=null, roomPlayers=[];
 
 $("#mpToggle").addEventListener("click",()=>mpPanel.classList.toggle("hidden"));
 
@@ -40,13 +40,23 @@ function connectRoom(code){
  socket.onmessage=ev=>{
    let msg; try{msg=JSON.parse(ev.data)}catch{return}
    if(msg.type==="welcome"){
-     myClientId=msg.clientId;isGM=!!msg.isGM;netState.textContent=`Комната ${room}${isGM?" · GM":""}`;
+     myClientId=msg.clientId;isGM=!!msg.isGM;turnClientId=msg.turnClientId||null;
+     document.body.classList.toggle("player-mode",!isGM);$("#roleBadge").textContent=isGM?"GM":"Игрок";
+     netState.textContent=`Комната ${room}${isGM?" · GM":" · Игрок"}`;
      $("#copyInvite").disabled=false;
      if(msg.state){applyingRemote=true;state=msg.state;selected=null;syncInputs();render();applyingRemote=false}
    } else if(msg.type==="state" && msg.clientId!==myClientId){
      applyingRemote=true;state=msg.state;selected=null;syncInputs();render();applyingRemote=false;
    } else if(msg.type==="players"){
-     playersBox.innerHTML=msg.players.map(p=>`<div><span class="onlineDot"></span>${escapeHtml(p.name)}${p.isGM?" — GM":""}</div>`).join("");
+     roomPlayers=msg.players;const me=roomPlayers.find(p=>p.id===myClientId);myTokenId=me?.tokenId||null;const turn=roomPlayers.find(p=>p.isTurn);turnClientId=turn?.id||turnClientId;
+     playersBox.innerHTML=msg.players.map(p=>`<div><span class="onlineDot"></span>${escapeHtml(p.name)}${p.isGM?" — GM":""}${p.isTurn?" — ХОД":""}${p.tokenId?" · токен ✓":""}</div>`).join("");
+     refreshGMControls();
+   } else if(msg.type==="turn"){
+     turnClientId=msg.turnClientId||null;refreshGMControls();
+   } else if(msg.type==="tokenMoved"){
+     const it=state.items?.find(x=>x.id===msg.tokenId);if(it){it.x=msg.x;it.y=msg.y;applyingRemote=true;originalRender();applyingRemote=false}
+   } else if(msg.type==="initiative"){
+     $("#initiativePanel").classList.remove("hidden");$("#initiativeCard").textContent=msg.card;$("#initiativeWho").textContent=msg.name+" вытянул инициативу";
    } else if(msg.type==="dice" && msg.clientId!==myClientId){
      dicePanel.classList.remove("hidden");diceBig.textContent=msg.total;diceSub.textContent=msg.detail;
      applyingRemote=true;
@@ -57,9 +67,20 @@ function connectRoom(code){
  socket.onclose=()=>{netState.textContent="Офлайн";playersBox.textContent="Соединение закрыто."};
  socket.onerror=()=>{netState.textContent="Ошибка сети"};
 }
+function refreshGMControls(){
+ if(!isGM)return;
+ const players=roomPlayers.filter(p=>!p.isGM);
+ const opts=players.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+ $("#turnPlayer").innerHTML=opts;$("#assignPlayer").innerHTML=opts;
+ const tokens=(state.items||[]).filter(i=>i.type==="token");
+ $("#assignToken").innerHTML=tokens.map(t=>`<option value="${t.id}">${escapeHtml(t.name||"PC")} (${t.id.slice(-4)})</option>`).join("");
+}
+$("#setTurnBtn").addEventListener("click",()=>{if(socket?.readyState===1)socket.send(JSON.stringify({type:"setTurn",room,clientId:$("#turnPlayer").value}))});
+$("#assignTokenBtn").addEventListener("click",()=>{if(socket?.readyState===1)socket.send(JSON.stringify({type:"assignToken",room,clientId:$("#assignPlayer").value,tokenId:$("#assignToken").value}))});
+$("#drawInitiative").addEventListener("click",()=>{if(socket?.readyState===1)socket.send(JSON.stringify({type:"drawInitiative",room}))});
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function broadcastState(){
- if(applyingRemote||!socket||socket.readyState!==1||!room)return;
+ if(applyingRemote||!socket||socket.readyState!==1||!room||!isGM)return;
  clearTimeout(syncTimer);syncTimer=setTimeout(()=>socket.send(JSON.stringify({type:"state",room,state})),45);
 }
 function broadcastDice(title,total,detail,cls=""){
