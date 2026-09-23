@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Savage Worlds — Map Forge v2</title>
+<style>
+:root{--bg:#0d1014;--panel:#171c22;--panel2:#202731;--line:#3d4652;--text:#eee8dc;--muted:#aaa397;--gold:#d0b36f}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--text);font:14px Arial,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{background:#252c35;border:1px solid #4b5664;border-radius:7px;padding:8px 10px;cursor:pointer}
+button:hover{background:#323b47}.active{outline:2px solid var(--gold);background:#403a29}
+#app{height:100%;display:grid;grid-template-rows:54px 1fr}
+.top{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#13171c;border-bottom:1px solid #333b45}
+.brand{font-family:Georgia,serif;font-weight:bold;color:#dfc787;margin-right:10px}.spacer{flex:1}
+.workspace{min-height:0;display:grid;grid-template-columns:210px 1fr 245px}
+aside{background:var(--panel);padding:12px;overflow:auto}.left{border-right:1px solid #333b45}.right{border-left:1px solid #333b45}
+h3{font:700 12px Georgia,serif;letter-spacing:.1em;color:#d8bf80;text-transform:uppercase;margin:4px 0 9px}
+.section{margin-bottom:18px}.tools{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+label{display:block;color:var(--muted);margin:8px 0 4px}input[type=number],input[type=text],select{width:100%;background:#0f1318;border:1px solid #414b57;border-radius:6px;padding:7px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hint{font-size:12px;color:#98938a;line-height:1.45}
+.stage{position:relative;overflow:hidden;background:#090b0e;touch-action:none;cursor:crosshair}
+.world{position:absolute;left:0;top:0;transform-origin:0 0}.map{position:absolute;left:0;top:0;background:#2a2d2c;box-shadow:0 0 50px #000}
+.grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(to right,rgba(240,240,230,.18) 1px,transparent 1px),linear-gradient(to bottom,rgba(240,240,230,.18) 1px,transparent 1px)}
+.entity{position:absolute;display:flex;align-items:center;justify-content:center;user-select:none;cursor:grab;overflow:hidden}
+.entity.selected{outline:3px solid #f0cf76;outline-offset:2px}
+.token{border-radius:50%;border:3px solid #ddd6c9;background:#53616e;font-weight:bold}
+.wall{background:#121417;border:1px solid #555d67}.door{background:#6b452c;border:2px solid #b87a4c}.prop{background:#594936;border:2px solid #88745a;border-radius:5px}
+.fog{background:rgba(3,4,5,.88);border-radius:35%;filter:blur(4px)}.blast{border:2px dashed #ffb35f;background:rgba(225,105,38,.22);border-radius:50%}
+.cone{background:rgba(225,105,38,.28);clip-path:polygon(0 50%,100% 0,100% 100%)}
+.hidden{display:none!important}.status{font-size:12px;color:#aaa}
+.measure{position:absolute;height:2px;background:#f4d36e;transform-origin:0 50%;pointer-events:none;z-index:20}.measureLabel{position:absolute;background:#111d;border:1px solid #8f7a48;border-radius:5px;padding:4px 6px;pointer-events:none;z-index:21}
+#toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);background:#10151be8;border:1px solid #596575;border-radius:8px;padding:8px 12px;z-index:30}
+
+.dicePanel{position:absolute;right:18px;top:18px;width:330px;max-height:calc(100% - 36px);overflow:auto;background:#151a20f2;border:1px solid #586270;border-radius:12px;padding:13px;z-index:50;box-shadow:0 15px 45px #0009}
+.dicePanel h2{font:700 17px Georgia,serif;color:#e0c681;margin:0 0 10px}
+.diceRow{display:flex;gap:6px;flex-wrap:wrap}.dieBtn{min-width:48px;font-weight:bold}
+.diceOptions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.diceResult{margin-top:12px;padding:12px;background:#0d1116;border:1px solid #3f4854;border-radius:9px;text-align:center}
+.diceBig{font:700 32px Georgia,serif;color:#f0d37f}.diceSub{color:#aaa397;margin-top:4px;font-size:12px}
+.diceHistory{margin-top:10px;border-top:1px solid #39414b;padding-top:8px;max-height:180px;overflow:auto}
+.hist{padding:6px 4px;border-bottom:1px solid #292f37;font-size:12px}.success{color:#b9d88d}.raise{color:#f0d37f}.fail{color:#c98b82}
+
+
+.mpPanel{position:absolute;left:18px;top:18px;width:330px;background:#151a20f5;border:1px solid #586270;border-radius:12px;padding:13px;z-index:55;box-shadow:0 15px 45px #0009}
+.mpPanel h2{font:700 17px Georgia,serif;color:#e0c681;margin:0 0 10px}
+.mpLine{display:flex;gap:7px;align-items:end}.mpLine>*{flex:1}
+.players{margin-top:10px;padding-top:8px;border-top:1px solid #39414b;font-size:12px;line-height:1.6}
+.onlineDot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#83c987;margin-right:6px}
+#netState{font-size:12px;color:#aaa397}
+
+</style>
+</head>
+<body>
+<div id="app">
+<header class="top">
+ <div class="brand">SAVAGE WORLDS · MAP FORGE v2</div>
+ <button id="undo">↶ Undo</button><button id="redo">↷ Redo</button>
+ <button id="save">Сохранить JSON</button><button id="load">Загрузить</button><input id="file" type="file" accept=".json,application/json" hidden>
+ <button id="export">Экспорт PNG</button><button id="diceToggle">🎲 Кубы</button><button id="mpToggle">🌐 Multiplayer</button><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
+</header>
+<div class="workspace">
+<aside class="left">
+ <div class="section"><h3>Инструменты</h3><div class="tools">
+  <button data-tool="select" class="active">↖ Выбор</button><button data-tool="pan">✥ Камера</button>
+  <button data-tool="wall">▰ Стена</button><button data-tool="door">▥ Дверь</button>
+  <button data-tool="token">● Токен</button><button data-tool="prop">■ Объект</button>
+  <button data-tool="fog">☁ Туман</button><button data-tool="erase">⌫ Ластик</button>
+  <button data-tool="measure">↔ Линейка</button><button data-tool="blast">◉ Blast</button>
+  <button data-tool="cone">◁ Cone</button>
+ </div></div>
+ <div class="section"><h3>Карта</h3>
+  <label>Ширина, клеток</label><input id="cols" type="number" min="5" max="100" value="30">
+  <label>Высота, клеток</label><input id="rows" type="number" min="5" max="100" value="22">
+  <label>Размер клетки, px</label><input id="cell" type="number" min="20" max="120" value="48">
+  <button id="resize" style="width:100%;margin-top:9px">Применить размер</button>
+ </div>
+ <div class="section"><h3>Сетка</h3>
+  <label><input id="gridToggle" type="checkbox" checked> Показывать сетку</label>
+  <label><input id="snap" type="checkbox" checke
