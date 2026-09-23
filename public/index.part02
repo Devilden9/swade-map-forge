@@ -1,76 +1,4 @@
-elect"){
-   if(!hit){selected=null;render();return}
-   selected=hit.dataset.id;const it=current();
-   if(!isGM && room){
-     if(!it || it.type!=="token" || it.id!==myTokenId || myClientId!==turnClientId){selected=null;render();return}
-     drag={kind:"item",it,dx:p.x-it.x,dy:p.y-it.y,playerMove:true};render();return;
-   }
-   remember();drag={kind:"item",it,dx:p.x-it.x,dy:p.y-it.y};render();return;
- }
- add(tool,p.x,p.y);
-});
-window.addEventListener("pointermove",ev=>{
- if(!drag)return;
- if(drag.kind==="pan"){panX=drag.px+(ev.clientX-drag.sx);panY=drag.py+(ev.clientY-drag.sy);render()}
- if(drag.kind==="item"){const p=local(ev);drag.it.x=snap(p.x-drag.dx);drag.it.y=snap(p.y-drag.dy);if(drag.playerMove){originalRender?.()}else render()}
- if(drag.kind==="measure")showMeasure(drag.start,local(ev));
-});
-window.addEventListener("pointerup",()=>{
- if(drag&&drag.kind==="item"&&drag.playerMove&&socket&&socket.readyState===1){socket.send(JSON.stringify({type:"moveToken",room,tokenId:drag.it.id,x:drag.it.x,y:drag.it.y}))}
- if(drag&&drag.kind==="measure"){$("#measureLine").classList.add("hidden");$("#measureLabel").classList.add("hidden")}
- drag=null;
-});
-function showMeasure(a,b){
- const ax=a.x*zoom+panX,ay=a.y*zoom+panY,bx=b.x*zoom+panX,by=b.y*zoom+panY,dx=bx-ax,dy=by-ay,d=Math.hypot(dx,dy);
- const line=$("#measureLine"),lab=$("#measureLabel");line.classList.remove("hidden");lab.classList.remove("hidden");
- line.style.left=ax+"px";line.style.top=ay+"px";line.style.width=d+"px";line.style.transform=`rotate(${Math.atan2(dy,dx)*180/Math.PI}deg)`;
- lab.style.left=(bx+8)+"px";lab.style.top=(by+8)+"px";lab.textContent=(Math.hypot(b.x-a.x,b.y-a.y)/state.cell).toFixed(1)+" клет.";
-}
-stage.addEventListener("wheel",ev=>{
- ev.preventDefault();const old=zoom,r=stage.getBoundingClientRect(),mx=ev.clientX-r.left,my=ev.clientY-r.top;
- zoom=Math.max(.25,Math.min(3,zoom*(ev.deltaY<0?1.12:.89)));panX=mx-(mx-panX)*(zoom/old);panY=my-(my-panY)*(zoom/old);render();
-},{passive:false});
-document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>{
- tool=b.dataset.tool;document.querySelectorAll("[data-tool]").forEach(x=>x.classList.toggle("active",x===b));stage.style.cursor=tool==="pan"?"grab":tool==="select"?"default":"crosshair";
-}));
-$("#gridToggle").addEventListener("change",render);
-$("#resize").addEventListener("click",()=>{remember();state.cols=Math.max(5,Number($("#cols").value)||30);state.rows=Math.max(5,Number($("#rows").value)||22);state.cell=Math.max(20,Number($("#cell").value)||48);render()});
-["pName","pX","pY","pW","pH","pR"].forEach(id=>$("#"+id).addEventListener("change",()=>{
- const it=current();if(!it)return;remember();it.name=$("#pName").value;it.x=Number($("#pX").value)||0;it.y=Number($("#pY").value)||0;it.w=Math.max(4,Number($("#pW").value)||4);it.h=Math.max(4,Number($("#pH").value)||4);it.r=Number($("#pR").value)||0;render();
-}));
-function del(){if(!selected)return;remember();state.items=state.items.filter(i=>i.id!==selected);selected=null;render()}
-$("#delete").addEventListener("click",del);
-window.addEventListener("keydown",ev=>{if(ev.key==="Delete"&&!["INPUT","TEXTAREA"].includes(document.activeElement.tagName))del()});
-$("#undo").addEventListener("click",()=>{if(!history.length)return;future.push(JSON.stringify(state));state=JSON.parse(history.pop());selected=null;syncInputs();render()});
-$("#redo").addEventListener("click",()=>{if(!future.length)return;history.push(JSON.stringify(state));state=JSON.parse(future.pop());selected=null;syncInputs();render()});
-$("#save").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="swade-map.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
-$("#imageUploadBtn").addEventListener("click",()=>$("#imageFile").click());
-$("#imageFile").addEventListener("change",ev=>{
- const file=ev.target.files&&ev.target.files[0]; if(!file)return;
- if(!file.type.startsWith("image/") && !/\.(png|jpe?g|webp|gif|bmp|svg|avif)$/i.test(file.name)){alert("Выберите файл изображения.");return}
- const reader=new FileReader();
- reader.onload=()=>{
-   const img=new Image();
-   img.onload=()=>{
-     remember();
-     state.mapImage=reader.result;
-     const targetW=Math.max(1,state.cols*state.cell),targetH=Math.max(1,state.rows*state.cell);
-     const ratio=img.naturalWidth/img.naturalHeight, mapRatio=targetW/targetH;
-     if(Math.abs(ratio-mapRatio)>.03){
-       const newRows=Math.max(5,Math.min(100,Math.round(state.cols/ratio)));
-       state.rows=newRows; syncInputs();
-     }
-     render();
-     ev.target.value="";
-   };
-   img.onerror=()=>alert("Браузер не смог прочитать этот формат изображения.");
-   img.src=reader.result;
- };
- reader.onerror=()=>alert("Не удалось прочитать изображение.");
- reader.readAsDataURL(file);
-});
-$("#load").addEventListener("click",()=>$("#file").click());
-$("#file").addEventListener("change",async ev=>{const f=ev.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data||!Array.isArray(data.items))throw new Error();state=data;selected=null;history=[];future=[];syncInputs();render()}catch(e){alert("Файл проекта повреждён или имеет неверный формат.")}});
+повреждён или имеет неверный формат.")}});
 $("#export").addEventListener("click",()=>{
  const c=document.createElement("canvas");c.width=state.cols*state.cell;c.height=state.rows*state.cell;const x=c.getContext("2d");
  x.fillStyle="#2a2d2c";x.fillRect(0,0,c.width,c.height);
@@ -109,4 +37,190 @@ function addHist(title, detail, cls=""){
 document.querySelectorAll(".dieBtn").forEach(b=>b.addEventListener("click",()=>{
  const sides=Number(b.dataset.die),ace=$("#acing").checked,r=rollOne(sides,ace),mod=Number($("#diceMod").value)||0,total=r.total+mod;
  diceBig.textContent=total; diceSub.textContent=rollText(r)+(mod?` ${mod>=0?"+":""}${mod}`:"");
- addHist
+ addHist("Обычный бросок: "+total,diceSub.textContent);
+}));
+$("#traitRoll").addEventListener("click",()=>{
+ const sides=Number($("#traitDie").value),mod=Number($("#diceMod").value)||0,ace=$("#acing").checked;
+ const trait=rollOne(sides,ace),useWild=$("#wildDie").checked,wild=useWild?rollOne(6,ace):null;
+ const traitTotal=trait.total+mod,wildTotal=wild?wild.total+mod:-Infinity,total=Math.max(traitTotal,wildTotal);
+ const oc=outcome(total);
+ diceBig.textContent=total;
+ let detail=rollText(trait)+(mod?` ${mod>=0?"+":""}${mod}`:"");
+ if(wild)detail+=" | Wild "+rollText(wild)+(mod?` ${mod>=0?"+":""}${mod}`:"");
+ detail+=" → "+oc.text;
+ diceSub.textContent=detail;
+ addHist("Trait Roll: "+total,detail,oc.cls);
+});
+$("#clearDice").addEventListener("click",()=>{diceHistory.innerHTML="";diceBig.textContent="—";diceSub.textContent="История очищена"});
+
+
+// ---- Multiplayer client ----
+const mpPanel=$("#mpPanel"), netState=$("#netState"), playersBox=$("#players");
+let socket=null, room="", myClientId="", isGM=false, applyingRemote=false, syncTimer=null;
+
+$("#mpToggle").addEventListener("click",()=>mpPanel.classList.toggle("hidden"));
+
+function makeRoomCode(){
+ const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s="";
+ for(let i=0;i<6;i++)s+=chars[Math.floor(Math.random()*chars.length)];
+ return s;
+}
+function connectRoom(code){
+ code=(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
+ if(!code)return alert("Введите код комнаты.");
+ room=code; $("#roomCode").value=room;
+ if(socket)socket.close();
+ const proto=location.protocol==="https:"?"wss":"ws";
+ socket=new WebSocket(`${proto}://${location.host}/ws`);
+ netState.textContent="Подключение…";
+ socket.onopen=()=>{
+   socket.send(JSON.stringify({type:"join",room,name:$("#playerName").value.trim()||"Игрок"}));
+ };
+ socket.onmessage=ev=>{
+   let msg; try{msg=JSON.parse(ev.data)}catch{return}
+   if(msg.type==="welcome"){
+     myClientId=msg.clientId;isGM=!!msg.isGM;netState.textContent=`Комната ${room}${isGM?" · GM":""}`;
+     $("#copyInvite").disabled=false;
+     if(msg.state){applyingRemote=true;state=msg.state;selected=null;syncInputs();render();applyingRemote=false}
+   } else if(msg.type==="state" && msg.clientId!==myClientId){
+     applyingRemote=true;state=msg.state;selected=null;syncInputs();render();applyingRemote=false;
+   } else if(msg.type==="players"){
+     playersBox.innerHTML=msg.players.map(p=>`<div><span class="onlineDot"></span>${escapeHtml(p.name)}${p.isGM?" — GM":""}</div>`).join("");
+   } else if(msg.type==="dice" && msg.clientId!==myClientId){
+     dicePanel.classList.remove("hidden");diceBig.textContent=msg.total;diceSub.textContent=msg.detail;
+     addHist(escapeHtml(msg.name)+" — "+escapeHtml(msg.title),escapeHtml(msg.detail),msg.cls||"");
+   } else if(msg.type==="error"){alert(msg.message)}
+ };
+ socket.onclose=()=>{netState.textContent="Офлайн";playersBox.textContent="Соединение закрыто."};
+ socket.onerror=()=>{netState.textContent="Ошибка сети"};
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function broadcastState(){
+ if(applyingRemote||!socket||socket.readyState!==1||!room)return;
+ clearTimeout(syncTimer);syncTimer=setTimeout(()=>socket.send(JSON.stringify({type:"state",room,state})),45);
+}
+function broadcastDice(title,total,detail,cls=""){
+ if(socket&&socket.readyState===1&&room)socket.send(JSON.stringify({type:"dice",room,title,total,detail,cls}));
+}
+$("#createRoom").addEventListener("click",()=>connectRoom(makeRoomCode()));
+$("#joinRoom").addEventListener("click",()=>connectRoom($("#roomCode").value));
+$("#copyInvite").addEventListener("click",async()=>{
+ const u=new URL(location.href);u.searchParams.set("room",room);
+ try{await navigator.clipboard.writeText(u.toString());$("#copyInvite").textContent="Ссылка скопирована";setTimeout(()=>$("#copyInvite").textContent="Скопировать приглашение",1500)}
+ catch{prompt("Скопируйте ссылку:",u.toString())}
+});
+
+// Hook state-changing render calls into network synchronization.
+const originalRender=render;
+render=function(){
+ originalRender();broadcastState();
+ if(typeof initRefreshNpcTokens==="function")initRefreshNpcTokens();
+ if(typeof refreshTokenConditions==="function")refreshTokenConditions();
+ if(typeof renderTokenConditionBadges==="function")renderTokenConditionBadges();
+ if(typeof combatRefreshActiveToken==="function")combatRefreshActiveToken();refreshJokerControls();
+};
+
+// Broadcast dice rolls by wrapping history insertion.
+const originalAddHist=addHist;
+addHist=function(title,detail,cls=""){originalAddHist(title,detail,cls);if(!applyingRemote){const total=diceBig.textContent;broadcastDice(title,total,detail,cls)}};
+
+const roomFromUrl=new URL(location.href).searchParams.get("room");
+if(roomFromUrl){$("#roomCode").value=roomFromUrl.toUpperCase();mpPanel.classList.remove("hidden")}
+
+
+// ---- Initiative draft: local-only prototype ----
+const initiativeDraft=$("#initiativeDraft");
+$("#initiativeToggle").addEventListener("click",()=>{initiativeDraft.classList.toggle("hidden");initRefreshNpcTokens()});
+const initNames=["Игрок 1","Игрок 2","Игрок 3","Игрок 4"];
+const initSuits=["♠","♥","♦","♣"],initRanks=["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+function selectedToken(){
+ return (state.items||[]).find(x=>x.id===selected&&x.type==="token")||null;
+}
+function normalizeTokenCondition(t){
+ if(!t)return;
+ if(!Number.isFinite(Number(t.wounds)))t.wounds=0;
+ t.wounds=Math.max(0,Math.min(3,Number(t.wounds)||0));
+ t.shaken=!!t.shaken;
+ if(!t.conditions||typeof t.conditions!=="object")t.conditions={};
+ for(const k of ["fatigued","prone","bound","distracted","vulnerable","stunned"])t.conditions[k]=!!t.conditions[k];
+}
+function refreshTokenConditions(){
+ const panel=document.querySelector("#tokenConditions"),fp=document.querySelector("#conditionFloat"),t=selectedToken();
+ if(!t){
+   if(panel)panel.classList.add("hidden");
+   if(fp)fp.classList.add("hidden");
+   return;
+ }
+ normalizeTokenCondition(t);
+ if(panel){
+   panel.classList.remove("hidden");
+   const w=document.querySelector("#woundValue");if(w)w.textContent=t.wounds;
+   const b=document.querySelector("#shakenToggle");if(b){b.textContent=t.shaken?"⚡ В шоке":"○ Нет шока";b.setAttribute("aria-pressed",String(t.shaken))}
+ }
+ if(fp){
+   fp.classList.remove("hidden");
+   document.querySelector("#conditionTokenName").textContent=t.name||"Токен";
+   document.querySelector("#floatWoundValue").textContent=t.wounds;
+   document.querySelector("#floatShaken").textContent=t.shaken?"⚡ В шоке":"○ Нет шока";
+   document.querySelectorAll("#extraConditions [data-cond]").forEach(b=>b.classList.toggle("on",!!t.conditions[b.dataset.cond]));
+ }
+}
+function renderTokenConditionBadges(){
+ document.querySelectorAll(".tokenStatusOverlay").forEach(x=>x.remove());
+ const host=document.querySelector("#map");
+ if(!host)return;
+ for(const t of (state.items||[])){
+   if(!t||t.type!=="token")continue;
+   normalizeTokenCondition(t);
+   const extras=[["fatigued","😮‍💨"],["prone","↘"],["bound","⛓"],["distracted","◌"],["vulnerable","⚠"],["stunned","✦"]]
+     .filter(([k])=>t.conditions[k]).map(([,i])=>i);
+   const parts=[];
+   if(t.wounds)parts.push(`<span class="wound">❤ ${t.wounds}</span>`);
+   if(t.shaken)parts.push('<span class="shaken">⚡ Шок</span>');
+   if(extras.length)parts.push(extras.join(" "));
+   if(!parts.length)continue;
+   const badge=document.createElement("div");
+   badge.className="tokenStatusOverlay";
+   badge.dataset.tokenStatus=t.id;
+   badge.style.left=(Number(t.x)+Number(t.w||state.cell)/2)+"px";
+   badge.style.top=(Number(t.y)+Number(t.h||state.cell)+3)+"px";
+   badge.innerHTML=parts.join(" · ");
+   host.appendChild(badge);
+ }
+}
+function updateSelectedCondition(kind,delta){
+ const t=selectedToken();if(!t)return;
+ normalizeTokenCondition(t);
+ if(kind==="wounds")t.wounds=Math.max(0,Math.min(3,t.wounds+delta));
+ if(kind==="shaken")t.shaken=!t.shaken;
+ if(kind==="condition"&&delta)t.conditions[delta]=!t.conditions[delta];
+ render();refreshTokenConditions();renderTokenConditionBadges();
+}
+let initDeck=[],initDrawn=[],initNameIndex=0,initTurnIndex=-1,combatRound=1,heldTurns=[],interruptedTurnStack=[],jokerUsed=[];
+const initRankPower={"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"J":11,"Q":12,"K":13,"A":14};
+const initSuitPower={"♣":1,"♠":2,"♦":3,"♥":4};
+function initPower(c){
+ if(c.joker)return 100;
+ return initRankPower[c.rank]*10+initSuitPower[c.suit];
+}
+function initTurnOrder(includeHeld=true){
+ let a=initDrawn.map((x,i)=>({...x,_i:i}));
+ if(!includeHeld)a=a.filter(x=>!heldTurns.includes(x._i));
+ return a.sort((a,b)=>initPower(b.card)-initPower(a.card));
+}
+
+function isJokerCard(card){return /JOKER|ДЖОКЕР|🃏/i.test(String(card||""))}
+function initiativeRollModifier(card){
+ const c=String(card||"");
+ if(isJokerCard(c))return 2;
+ if(c.includes("♥"))return 2;
+ if(c.includes("♦"))return 1;
+ if(c.includes("♠"))return -1;
+ if(c.includes("♣"))return -2;
+ return 0;
+}
+function initiativeModifierText(card){
+ const n=initiativeRollModifier(card);
+ return (n>=0?"+":"")+n;
+}
+function current

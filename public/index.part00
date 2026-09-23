@@ -22,8 +22,8 @@ label{display:block;color:var(--muted);margin:8px 0 4px}input[type=number],input
 .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hint{font-size:12px;color:#98938a;line-height:1.45}
 .stage{position:relative;overflow:hidden;background:#090b0e;touch-action:none;cursor:crosshair}
 .world{position:absolute;left:0;top:0;transform-origin:0 0}.map{position:absolute;left:0;top:0;background:#2a2d2c;box-shadow:0 0 50px #000}
-.mapImage{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;z-index:0}.grid{z-index:1;position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(to right,rgba(240,240,230,.18) 1px,transparent 1px),linear-gradient(to bottom,rgba(240,240,230,.18) 1px,transparent 1px)}
-.entity{z-index:2;position:absolute;display:flex;align-items:center;justify-content:center;user-select:none;cursor:grab;overflow:hidden}
+.grid{position:absolute;inset:0;pointer-events:none;z-index:1;background-image:linear-gradient(to right,rgba(240,240,230,.18) 1px,transparent 1px),linear-gradient(to bottom,rgba(240,240,230,.18) 1px,transparent 1px)}
+.entity{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center;user-select:none;cursor:grab;overflow:hidden}
 .entity.selected{outline:3px solid #f0cf76;outline-offset:2px}
 .token{border-radius:50%;border:3px solid #ddd6c9;background:#53616e;font-weight:bold}
 .wall{background:#121417;border:1px solid #555d67}.door{background:#6b452c;border:2px solid #b87a4c}.prop{background:#594936;border:2px solid #88745a;border-radius:5px}
@@ -49,30 +49,70 @@ label{display:block;color:var(--muted);margin:8px 0 4px}input[type=number],input
 .players{margin-top:10px;padding-top:8px;border-top:1px solid #39414b;font-size:12px;line-height:1.6}
 .onlineDot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#83c987;margin-right:6px}
 #netState{font-size:12px;color:#aaa397}
-.roleBadge{padding:5px 8px;border:1px solid #665b3d;border-radius:6px;color:#e0c681;font-size:12px}
-.playerOnly{display:none}.player-mode .gmOnly{display:none!important}.player-mode .playerOnly{display:inline-block}
-.player-mode .left .section:not(:first-child){display:none}.player-mode .left [data-tool]:not([data-tool="select"]):not([data-tool="pan"]):not([data-tool="measure"]){display:none}
-.initiativePanel{position:absolute;right:18px;bottom:18px;width:280px;background:#151a20f2;border:1px solid #586270;border-radius:12px;padding:12px;z-index:50}.initiativeCard{font:700 28px Georgia,serif;text-align:center;color:#f0d37f;padding:10px}
 
+
+.initiativeDraft{position:absolute;right:18px;bottom:18px;width:360px;max-height:calc(100% - 36px);overflow:auto;background:#151a20f2;border:1px solid #586270;border-radius:12px;padding:13px;z-index:54;box-shadow:0 15px 45px #0009}
+.initiativeDraft h2{font:700 17px Georgia,serif;color:#e0c681;margin:0 0 10px}
+.initTop{display:grid;grid-template-columns:105px 1fr;gap:12px;align-items:center}
+.initDeck{height:142px;border:3px double #a88f59;border-radius:9px;background:repeating-linear-gradient(45deg,#222a34 0 7px,#171d25 7px 14px);display:grid;place-items:center;color:#d9c17f;font:700 32px Georgia,serif;box-shadow:5px 5px 0 #090b0e}
+.initCard{height:142px;border-radius:9px;background:#eee9dc;color:#171717;position:relative;font-family:Georgia,serif;padding:10px;box-shadow:0 8px 20px #0008}
+.initCard.red{color:#a92727}.initCard.joker{background:linear-gradient(145deg,#292319,#dfca86,#3b3122);color:#17120c}
+.initCorner{font-size:23px;font-weight:bold;line-height:.9}.initBottom{position:absolute;right:10px;bottom:10px;transform:rotate(180deg)}
+.initSuit{position:absolute;inset:0;display:grid;place-items:center;font-size:48px}.initRows{margin-top:10px;border-top:1px solid #39414b}
+.initRow{display:flex;justify-content:space-between;padding:7px 3px;border-bottom:1px solid #292f37;font-size:12px}.initVal{font:700 15px Georgia,serif}.initRed{color:#d56b6b}.initRow.currentTurn{background:#403a29;outline:1px solid #d0b36f}.initTurnTag{color:#f0d37f;font-weight:bold;margin-left:6px}
+.initActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.initActions button:first-child{grid-column:1/-1}
+
+.tokenStateBadge{position:absolute;left:50%;bottom:-13px;transform:translateX(-50%);z-index:9;
+font:700 11px/1.2 Arial,sans-serif;white-space:nowrap;background:#101317e8;border:1px solid #69717b;
+border-radius:8px;padding:2px 5px;pointer-events:none;box-shadow:0 1px 4px #000}
+.tokenStateBadge .wound{color:#e28a8a}.tokenStateBadge .shaken{color:#e8d078}
+.mapImage{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:0;pointer-events:none}.mapImage.hidden{display:none}
+/* Combat system additions */
+.entity.activeTurnToken{outline:3px solid #f0d36d!important;box-shadow:0 0 0 3px #15120a,0 0 22px 7px #f0d36d99!important}
+.combatConditionBar{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.combatConditionBar button{font-size:11px;padding:5px 7px}
+.combatConditionBar button.on{background:#5b4d2b;border-color:#d0b36f;color:#ffe6a0}
+.initRow.heldTurn{border-left:3px solid #8ab4d8}
+#combatRoundBox{margin-top:8px;padding:7px;border:1px solid #414b57;border-radius:7px;background:#101317}
+#combatRoundBox b{color:#f0d37f}
+
+.tokenStatusOverlay{
+ position:absolute;z-index:12;pointer-events:none;transform:translate(-50%,0);
+ background:#11151aeF;border:1px solid #7b8490;border-radius:8px;
+ padding:3px 6px;font:700 11px/1.2 Arial,sans-serif;white-space:nowrap;
+ box-shadow:0 2px 5px #000a;color:#eee
+}
+.tokenStatusOverlay .wound{color:#ef8b8b}
+.tokenStatusOverlay .shaken{color:#f0d36d}
+
+.activeTurnRing{position:absolute;z-index:11;pointer-events:none;border:3px solid #f0d36d;
+border-radius:50%;box-shadow:0 0 18px #f0d36daa;box-sizing:border-box}
+
+.jokerOwner{box-shadow:inset 0 0 0 1px #d6b65b}
+.jokerTurn{border-left:4px solid #e4c65f!important}
+#jokerInterrupt{background:#5a1d28;border-color:#d67b88;font-weight:800}
+
+#initiativeRollBonus.positive{border-color:#648a61}
+#initiativeRollBonus.negative{border-color:#9b5555}
 </style>
 </head>
 <body>
 <div id="app">
 <header class="top">
  <div class="brand">SAVAGE WORLDS · MAP FORGE v2</div>
- <span id="roleBadge" class="roleBadge">Не подключено</span><button id="undo" class="gmOnly">↶ Undo</button><button id="redo" class="gmOnly">↷ Redo</button>
- <button id="save" class="gmOnly">Сохранить JSON</button><button id="load" class="gmOnly">Загрузить</button><input id="file" type="file" accept=".json,application/json" hidden>
- <button id="export" class="gmOnly">Экспорт PNG</button><button id="imageUploadBtn" class="gmOnly">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="mpToggle">🌐 Multiplayer</button><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
+ <button id="undo">↶ Undo</button><button id="redo">↷ Redo</button>
+ <button id="save">Сохранить JSON</button><button id="load">Загрузить</button><input id="file" type="file" accept=".json,application/json" hidden>
+ <button id="export">Экспорт PNG</button><button id="imageUploadBtn">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="initiativeToggle">🃏 Инициатива</button><button id="mpToggle">🌐 Multiplayer</button><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
 </header>
 <div class="workspace">
 <aside class="left">
  <div class="section"><h3>Инструменты</h3><div class="tools">
   <button data-tool="select" class="active">↖ Выбор</button><button data-tool="pan">✥ Камера</button>
-  <button data-tool="wall" class="gmOnly">▰ Стена</button><button data-tool="door" class="gmOnly">▥ Дверь</button>
-  <button data-tool="token" class="gmOnly">● Токен</button><button data-tool="prop" class="gmOnly">■ Объект</button>
-  <button data-tool="fog" class="gmOnly">☁ Туман</button><button data-tool="erase" class="gmOnly">⌫ Ластик</button>
-  <button data-tool="measure">↔ Линейка</button><button data-tool="blast" class="gmOnly">◉ Blast</button>
-  <button data-tool="cone" class="gmOnly">◁ Cone</button>
+  <button data-tool="wall">▰ Стена</button><button data-tool="door">▥ Дверь</button>
+  <button data-tool="token">● Токен</button><button data-tool="prop">■ Объект</button>
+  <button data-tool="fog">☁ Туман</button><button data-tool="erase">⌫ Ластик</button>
+  <button data-tool="measure">↔ Линейка</button><button data-tool="blast">◉ Blast</button>
+  <button data-tool="cone">◁ Cone</button>
  </div></div>
  <div class="section"><h3>Карта</h3>
   <label>Ширина, клеток</label><input id="cols" type="number" min="5" max="100" value="30">
@@ -82,4 +122,27 @@ label{display:block;color:var(--muted);margin:8px 0 4px}input[type=number],input
  </div>
  <div class="section"><h3>Сетка</h3>
   <label><input id="gridToggle" type="checkbox" checked> Показывать сетку</label>
-  <label><input id="snap" type="checkbox" checke
+  <label><input id="snap" type="checkbox" checked> Привязка к сетке</label>
+ </div>
+ <div class="hint"><b>Как пользоваться:</b><br>1. Выбери «Токен», «Стена» и т.п.<br>2. Кликни по карте.<br>3. Переключись на «Выбор» и перетаскивай объект.<br><br>Колесо — масштаб. Средняя кнопка мыши — камера. Delete — удалить.</div>
+</aside>
+
+<main class="stage" id="stage">
+<div id="conditionFloat" class="hidden" style="position:absolute;right:18px;top:18px;z-index:100;width:230px;background:#171b20f2;border:2px solid #8b7954;border-radius:10px;padding:12px;box-shadow:0 6px 24px #000b">
+ <div style="font:700 17px Georgia,serif;margin-bottom:3px">❤️ Состояние токена</div>
+ <div id="conditionTokenName" style="color:#b9b1a3;margin-bottom:10px">—</div>
+ <div style="display:grid;grid-template-columns:1fr 34px 34px 34px;gap:6px;align-items:center">
+  <span>Ранения</span><button id="floatWoundMinus" type="button">−</button><b id="floatWoundValue" style="text-align:center">0</b><button id="floatWoundPlus" type="button">+</button>
+ </div>
+ <button id="floatShaken" type="button" style="width:100%;margin-top:9px">○ Нет шока</button>
+ <div class="combatConditionBar" id="extraConditions">
+   <button type="button" data-cond="fatigued">Усталость</button>
+   <button type="button" data-cond="prone">Сбит с ног</button>
+   <button type="button" data-cond="bound">Связан</button>
+   <button type="button" data-cond="distracted">Отвлечён</button>
+   <button type="button" data-cond="vulnerable">Уязвим</button>
+   <button type="button" data-cond="stunned">Оглушён</button>
+ </div>
+</div>
+ <div class="world" id="world"><div class="map" id="map"><img id="mapImage" class="mapImage hidden" alt=""><div class="grid" id="grid"></div></div></div>
+ <div id="measureLine" class="m

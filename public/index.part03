@@ -1,109 +1,249 @@
-("Обычный бросок: "+total,diceSub.textContent);
+InitiativeEntry(){return initCurrent()}
+function jokerAvailableEntries(){
+ return initDrawn.map((x,i)=>({...x,_i:i})).filter(x=>isJokerCard(x.card)&&!jokerUsed.includes(x._i));
+}
+function refreshJokerControls(){
+ const btn=document.querySelector("#jokerInterrupt"),hint=document.querySelector("#jokerBonusHint");
+ if(!btn||!hint)return;
+ const cur=initCurrent(),available=jokerAvailableEntries();
+ const jokerActive=cur&&isJokerCard(cur.card);
+ hint.classList.toggle("hidden",!jokerActive);
+ const bonusBox=document.querySelector("#initiativeRollBonus"),bonusValue=document.querySelector("#initiativeRollBonusValue");
+ if(bonusBox&&bonusValue){
+   bonusBox.classList.toggle("hidden",!cur);
+   if(cur){
+     const n=initiativeRollModifier(cur.card);
+     bonusValue.textContent=initiativeModifierText(cur.card);
+     bonusBox.classList.toggle("positive",n>0);
+     bonusBox.classList.toggle("negative",n<0);
+   }
+ }
+ // Local draft: GM may trigger any available Joker. In multiplayer this will later be
+ // server-authoritative and restricted to the owner.
+ const canInterrupt=available.some(j=>!cur||j._i!==cur._i);
+ btn.classList.toggle("hidden",!canInterrupt);
+}
+function initCurrent(){
+ const order=initTurnOrder();
+ return initTurnIndex>=0&&initTurnIndex<order.length?order[initTurnIndex]:null;
+}
+function combatRefreshActiveToken(){
+ document.querySelectorAll(".activeTurnRing").forEach(e=>e.remove());
+ const cur=initCurrent(),host=document.querySelector("#map");
+ if(cur&&cur.tokenId&&host){
+   const tok=(state.items||[]).find(t=>t.id===cur.tokenId&&t.type==="token");
+   if(tok){
+     const ring=document.createElement("div");ring.className="activeTurnRing";
+     ring.style.left=(Number(tok.x)-4)+"px";ring.style.top=(Number(tok.y)-4)+"px";
+     ring.style.width=(Number(tok.w||state.cell)+8)+"px";ring.style.height=(Number(tok.h||state.cell)+8)+"px";
+     host.appendChild(ring);
+   }
+ }
+ const r=document.querySelector("#combatRound");if(r)r.textContent=combatRound;
+}
+function initLabel(c){return c.joker?"JOKER 🃏":c.rank+c.suit}
+function initShow(c){
+ const el=$("#initCard");el.className="initCard";
+ if(!c){$("#initA").textContent=$("#initB").textContent="—";$("#initSuit").textContent="?";return}
+ if(c.joker){el.classList.add("joker");$("#initA").textContent=$("#initB").textContent="JOKER";$("#initSuit").textContent="🃏";return}
+ if(c.suit==="♥"||c.suit==="♦")el.classList.add("red");
+ $("#initA").innerHTML=$("#initB").innerHTML=c.rank+"<br>"+c.suit;$("#initSuit").textContent=c.suit;
+}
+function initRenderRows(){
+ const order=initTurnOrder(),cur=initCurrent();
+ $("#initRows").innerHTML=order.length?order.map(x=>{
+   const active=cur&&cur._i===x._i,held=heldTurns.includes(x._i);
+   return `<div class="initRow ${active?"currentTurn":""} ${held?"heldTurn":""} ${isJokerCard(x.card)?"jokerOwner":""} ${active&&isJokerCard(x.card)?"jokerTurn":""}"><span>${x.tokenId?"● ":""}${x.name}${active?'<span class="initTurnTag">← ХОД</span>':""}${held?'<span class="initTurnTag">⏸ УДЕРЖИВАЕТ</span>':""}</span><span class="initVal ${(x.card.suit==="♥"||x.card.suit==="♦")?"initRed":""}">${initLabel(x.card)}</span></div>`;
+ }).join(""):'<div class="initRow"><span>Карты ещё не вытягивались</span><span>—</span></div>';
+ combatRefreshActiveToken();
+}
+function initStatus(){$("#initCount").textContent=`В колоде: ${initDeck.length} · сейчас тянет: ${initNames[initNameIndex]}`}
+function initFresh(){
+ initDeck=[];for(const suit of initSuits)for(const rank of initRanks)initDeck.push({rank,suit});initDeck.push({joker:true},{joker:true});
+ for(let i=initDeck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[initDeck[i],initDeck[j]]=[initDeck[j],initDeck[i]]}
+ initDrawn=[];initTurnIndex=-1;heldTurns=[];initShow(null);initRenderRows();initStatus();
+}
+function initTake(name,tokenId=null){
+ if(!initDeck.length){alert("Колода закончилась. Нажмите «Новая колода».");return null}
+ const card=initDeck.pop();initDrawn.push({name,card,tokenId});initTurnIndex=0;initShow(card);return card;
+}
+function initNpcCandidates(){
+ const items=Array.isArray(state.items)?state.items:[];
+ return items.filter(t=>t && t.type==="token");
+}
+function initCardForToken(id){
+ const found=[...initDrawn].reverse().find(x=>x.tokenId===id);
+ return found?found.card:null;
+}
+function initRefreshNpcTokens(){
+ const box=document.querySelector("#initNpcTokens"); if(!box)return;
+ const tokens=initNpcCandidates();
+ if(!tokens.length){
+   box.innerHTML='<div style="padding:5px">На карте пока нет токенов.</div>';
+   return;
+ }
+ box.innerHTML=tokens.map(t=>{
+   const c=initCardForToken(t.id);
+   const card=c?initLabel(c):"—";
+   const red=c&&c.suit&&"♥♦".includes(c.suit)?"color:#d56b6b":"";
+   return `<div style="display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:center;padding:6px 3px;border-bottom:1px solid #292f37">
+     <span>● ${escapeHtml(t.name||"PC")}</span>
+     <b style="font-family:Georgia;${red}">${card}</b>
+     <button class="initTokenDraw" data-token="${escapeHtml(t.id)}" style="padding:5px 7px">Тянуть</button>
+   </div>`;
+ }).join("");
+ box.querySelectorAll(".initTokenDraw").forEach(btn=>btn.addEventListener("click",()=>{
+   const id=btn.dataset.token;
+   const token=(state.items||[]).find(t=>t.id===id&&t.type==="token");
+   if(!token)return;
+   initDrawn=initDrawn.filter(x=>x.tokenId!==id);
+   if(initTake(token.name||"PC",id)){initRenderRows();initStatus();initRefreshNpcTokens()}
+ }));
+}$("#initDraw").addEventListener("click",()=>{if(initTake(initNames[initNameIndex])){initRenderRows();initStatus()}});
+$("#initNext").addEventListener("click",()=>{initNameIndex=(initNameIndex+1)%initNames.length;initStatus()});
+$("#initReset").addEventListener("click",initFresh);
+$("#initEndTurn").addEventListener("click",()=>{
+ let order=initTurnOrder();
+ if(!order.length)return alert("Сначала вытяните карты инициативы.");
+ const before=initCurrent();
+ if(before&&isJokerCard(before.card)){
+   if(!jokerUsed.includes(before._i))jokerUsed.push(before._i);
+   if(interruptedTurnStack.length){
+     const restore=interruptedTurnStack.pop();
+     order=initTurnOrder();
+     initTurnIndex=order.findIndex(x=>x._i===restore);
+   }else{
+     if(initTurnIndex<order.length-1)initTurnIndex++; else {$("#initEndTurn").textContent="↻ Новый раунд";return;}
+   }
+ }else if(initTurnIndex<0)initTurnIndex=0;
+ else if(initTurnIndex<order.length-1)initTurnIndex++;
+ else {
+   $("#initEndTurn").textContent="↻ Новый раунд";
+   return;
+ }
+ const cur=initCurrent();
+ if(cur&&cur.tokenId){
+   selected=cur.tokenId;
+   const tok=(state.items||[]).find(t=>t.id===cur.tokenId);
+   if(tok){
+     panX=stage.clientWidth/2-(tok.x+tok.w/2)*zoom;
+     panY=stage.clientHeight/2-(tok.y+tok.h/2)*zoom;
+     originalRender();
+   }
+ }
+ initRenderRows();initRefreshNpcTokens();refreshTokenConditions();
+});
+$("#initNpcDeal").addEventListener("click",()=>{
+ const tokens=initNpcCandidates();
+ if(!tokens.length)return alert("На карте нет токенов.");
+ for(const token of tokens){
+   initDrawn=initDrawn.filter(x=>x.tokenId!==token.id);
+   if(!initTake(token.name||"PC",token.id))break;
+ }
+ initRenderRows();initStatus();initRefreshNpcTokens();
+});
+
+document.querySelectorAll("#extraConditions [data-cond]").forEach(b=>b.addEventListener("click",e=>{
+ e.stopPropagation();updateSelectedCondition("condition",b.dataset.cond);
 }));
-$("#traitRoll").addEventListener("click",()=>{
- const sides=Number($("#traitDie").value),mod=Number($("#diceMod").value)||0,ace=$("#acing").checked;
- const trait=rollOne(sides,ace),useWild=$("#wildDie").checked,wild=useWild?rollOne(6,ace):null;
- const traitTotal=trait.total+mod,wildTotal=wild?wild.total+mod:-Infinity,total=Math.max(traitTotal,wildTotal);
- const oc=outcome(total);
- diceBig.textContent=total;
- let detail=rollText(trait)+(mod?` ${mod>=0?"+":""}${mod}`:"");
- if(wild)detail+=" | Wild "+rollText(wild)+(mod?` ${mod>=0?"+":""}${mod}`:"");
- detail+=" → "+oc.text;
- diceSub.textContent=detail;
- addHist("Trait Roll: "+total,detail,oc.cls);
+
+document.querySelector("#jokerInterrupt")?.addEventListener("click",()=>{
+ const available=jokerAvailableEntries();
+ if(!available.length)return;
+ const cur=initCurrent();
+ let j=available[0];
+ if(available.length>1){
+   const names=available.map((x,i)=>`${i+1}. ${x.name}`).join("\n");
+   const n=Number(prompt("Кто использует Джокера?\n"+names,"1"))-1;
+   if(Number.isInteger(n)&&available[n])j=available[n]; else return;
+ }
+ if(cur&&cur._i!==j._i)interruptedTurnStack.push(cur._i);
+ const order=initTurnOrder();
+ initTurnIndex=order.findIndex(x=>x._i===j._i);
+ initRenderRows();
+ const tok=j.tokenId&&(state.items||[]).find(t=>t.id===j.tokenId);
+ if(tok){selected=tok.id;panX=stage.clientWidth/2-(tok.x+tok.w/2)*zoom;panY=stage.clientHeight/2-(tok.y+tok.h/2)*zoom;originalRender();refreshTokenConditions();}
 });
-$("#clearDice").addEventListener("click",()=>{diceHistory.innerHTML="";diceBig.textContent="—";diceSub.textContent="История очищена"});
-
-
-// ---- Multiplayer client ----
-const mpPanel=$("#mpPanel"), netState=$("#netState"), playersBox=$("#players");
-let socket=null, room="", myClientId="", isGM=false, applyingRemote=false, syncTimer=null, myTokenId=null, turnClientId=null, roomPlayers=[];
-
-$("#mpToggle").addEventListener("click",()=>mpPanel.classList.toggle("hidden"));
-
-function makeRoomCode(){
- const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s="";
- for(let i=0;i<6;i++)s+=chars[Math.floor(Math.random()*chars.length)];
- return s;
-}
-function connectRoom(code){
- code=(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
- if(!code)return alert("Введите код комнаты.");
- room=code; $("#roomCode").value=room;
- if(socket)socket.close();
- const proto=location.protocol==="https:"?"wss":"ws";
- socket=new WebSocket(`${proto}://${location.host}/ws`);
- netState.textContent="Подключение…";
- socket.onopen=()=>{
-   socket.send(JSON.stringify({type:"join",room,name:$("#playerName").value.trim()||"Игрок"}));
- };
- socket.onmessage=ev=>{
-   let msg; try{msg=JSON.parse(ev.data)}catch{return}
-   if(msg.type==="welcome"){
-     myClientId=msg.clientId;isGM=!!msg.isGM;turnClientId=msg.turnClientId||null;
-     document.body.classList.toggle("player-mode",!isGM);$("#roleBadge").textContent=isGM?"GM":"Игрок";
-     netState.textContent=`Комната ${room}${isGM?" · GM":" · Игрок"}`;
-     $("#copyInvite").disabled=false;
-     if(msg.state){applyingRemote=true;state=msg.state;selected=null;syncInputs();render();applyingRemote=false}
-   } else if(msg.type==="state" && msg.clientId!==myClientId){
-     applyingRemote=true;state=msg.state;selected=null;syncInputs();render();applyingRemote=false;
-   } else if(msg.type==="players"){
-     roomPlayers=msg.players;const me=roomPlayers.find(p=>p.id===myClientId);myTokenId=me?.tokenId||null;const turn=roomPlayers.find(p=>p.isTurn);turnClientId=turn?.id||turnClientId;
-     playersBox.innerHTML=msg.players.map(p=>`<div><span class="onlineDot"></span>${escapeHtml(p.name)}${p.isGM?" — GM":""}${p.isTurn?" — ХОД":""}${p.tokenId?" · токен ✓":""}</div>`).join("");
-     refreshGMControls();
-   } else if(msg.type==="turn"){
-     turnClientId=msg.turnClientId||null;refreshGMControls();
-   } else if(msg.type==="tokenMoved"){
-     const it=state.items?.find(x=>x.id===msg.tokenId);if(it){it.x=msg.x;it.y=msg.y;applyingRemote=true;originalRender();applyingRemote=false}
-   } else if(msg.type==="initiative"){
-     $("#initiativePanel").classList.remove("hidden");$("#initiativeCard").textContent=msg.card;$("#initiativeWho").textContent=msg.name+" вытянул инициативу";
-   } else if(msg.type==="dice" && msg.clientId!==myClientId){
-     dicePanel.classList.remove("hidden");diceBig.textContent=msg.total;diceSub.textContent=msg.detail;
-     applyingRemote=true;
-     originalAddHist(escapeHtml(msg.name)+" — "+escapeHtml(msg.title),escapeHtml(msg.detail),msg.cls||"");
-     applyingRemote=false;
-   } else if(msg.type==="error"){alert(msg.message)}
- };
- socket.onclose=()=>{netState.textContent="Офлайн";playersBox.textContent="Соединение закрыто."};
- socket.onerror=()=>{netState.textContent="Ошибка сети"};
-}
-function refreshGMControls(){
- if(!isGM)return;
- const players=roomPlayers.filter(p=>!p.isGM);
- const opts=players.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
- $("#turnPlayer").innerHTML=opts;$("#assignPlayer").innerHTML=opts;
- const tokens=(state.items||[]).filter(i=>i.type==="token");
- $("#assignToken").innerHTML=tokens.map(t=>`<option value="${t.id}">${escapeHtml(t.name||"PC")} (${t.id.slice(-4)})</option>`).join("");
-}
-$("#setTurnBtn").addEventListener("click",()=>{if(socket?.readyState===1)socket.send(JSON.stringify({type:"setTurn",room,clientId:$("#turnPlayer").value}))});
-$("#assignTokenBtn").addEventListener("click",()=>{if(socket?.readyState===1)socket.send(JSON.stringify({type:"assignToken",room,clientId:$("#assignPlayer").value,tokenId:$("#assignToken").value}))});
-$("#drawInitiative").addEventListener("click",()=>{if(socket?.readyState===1)socket.send(JSON.stringify({type:"drawInitiative",room}))});
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function broadcastState(){
- if(applyingRemote||!socket||socket.readyState!==1||!room||!isGM)return;
- clearTimeout(syncTimer);syncTimer=setTimeout(()=>socket.send(JSON.stringify({type:"state",room,state})),45);
-}
-function broadcastDice(title,total,detail,cls=""){
- if(socket&&socket.readyState===1&&room)socket.send(JSON.stringify({type:"dice",room,title,total,detail,cls}));
-}
-$("#createRoom").addEventListener("click",()=>connectRoom(makeRoomCode()));
-$("#joinRoom").addEventListener("click",()=>connectRoom($("#roomCode").value));
-$("#copyInvite").addEventListener("click",async()=>{
- const u=new URL(location.href);u.searchParams.set("room",room);
- try{await navigator.clipboard.writeText(u.toString());$("#copyInvite").textContent="Ссылка скопирована";setTimeout(()=>$("#copyInvite").textContent="Скопировать приглашение",1500)}
- catch{prompt("Скопируйте ссылку:",u.toString())}
+document.querySelector("#initHoldTurn")?.addEventListener("click",()=>{
+ const cur=initCurrent();if(!cur)return alert("Сейчас нет активного хода.");
+ if(!heldTurns.includes(cur._i))heldTurns.push(cur._i);
+ $("#initEndTurn").click();
 });
+document.querySelector("#initNewRound")?.addEventListener("click",()=>{
+ combatRound++;heldTurns=[];interruptedTurnStack=[];jokerUsed=[];initTurnIndex=-1;initDrawn=[];
+ initFresh();$("#initEndTurn").textContent="✓ Завершить ход";
+ const r=document.querySelector("#combatRound");if(r)r.textContent=combatRound;
+});
+document.querySelector("#floatWoundMinus")?.addEventListener("click",e=>{e.stopPropagation();updateSelectedCondition("wounds",-1)});
+document.querySelector("#floatWoundPlus")?.addEventListener("click",e=>{e.stopPropagation();updateSelectedCondition("wounds",1)});
+document.querySelector("#floatShaken")?.addEventListener("click",e=>{e.stopPropagation();updateSelectedCondition("shaken",0)});
+document.querySelector("#woundMinus")?.addEventListener("click",()=>updateSelectedCondition("wounds",-1));
+document.querySelector("#woundPlus")?.addEventListener("click",()=>updateSelectedCondition("wounds",1));
+document.querySelector("#shakenToggle")?.addEventListener("click",()=>updateSelectedCondition("shaken",0));
+document.addEventListener("pointerup",()=>setTimeout(()=>{refreshTokenConditions();renderTokenConditionBadges()},0));
+initFresh();
+initRefreshNpcTokens();
+refreshTokenConditions();
+renderTokenConditionBadges();
 
-// Hook state-changing render calls into network synchronization.
-const originalRender=render;
-render=function(){originalRender();broadcastState()};
 
-// Broadcast dice rolls by wrapping history insertion.
-const originalAddHist=addHist;
-addHist=function(title,detail,cls=""){originalAddHist(title,detail,cls);if(!applyingRemote){const total=diceBig.textContent;broadcastDice(title,total,detail,cls)}};
 
-const roomFromUrl=new URL(location.href).searchParams.get("room");
-if(roomFromUrl){$("#roomCode").value=roomFromUrl.toUpperCase();mpPanel.classList.remove("hidden")}
+// --- Map image upload (local draft) ---
+const imageUploadBtn=document.querySelector("#imageUploadBtn");
+const imageFile=document.querySelector("#imageFile");
+if(imageUploadBtn && imageFile){
+  imageUploadBtn.addEventListener("click",()=>imageFile.click());
+  imageFile.addEventListener("change",()=>{
+    const file=imageFile.files && imageFile.files[0];
+    if(!file)return;
+    if(!(file.type||"").startsWith("image/")){
+      alert("Выберите файл изображения.");
+      imageFile.value="";
+      return;
+    }
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const data=String(reader.result||"");
+      const probe=new Image();
+      probe.onload=()=>{
+        state.mapImage=data;
+        // Keep current width, adapt map height to the image aspect ratio.
+        if(probe.naturalWidth && probe.naturalHeight && state.cols){
+          state.rows=Math.max(1,Math.round(state.cols*probe.naturalHeight/probe.naturalWidth));
+        }
+        render();
+        imageFile.value="";
+      };
+      probe.onerror=()=>{alert("Браузер не смог открыть это изображение.");imageFile.value=""};
+      probe.src=data;
+    };
+    reader.onerror=()=>{alert("Не удалось прочитать файл.");imageFile.value=""};
+    reader.readAsDataURL(file);
+  });
+}
+
+
+// --- Local battle autosave ---
+const LOCAL_SAVE_KEY="swade-map-forge-battle-draft-v1";
+function saveBattleLocal(){
+ try{
+   localStorage.setItem(LOCAL_SAVE_KEY,JSON.stringify({state,initDrawn,initTurnIndex,combatRound,heldTurns,interruptedTurnStack,jokerUsed,panX,panY,zoom}));
+ }catch(e){}
+}
+function loadBattleLocal(){
+ try{
+   const raw=localStorage.getItem(LOCAL_SAVE_KEY);if(!raw)return;
+   const d=JSON.parse(raw);
+   if(d.state&&confirm("Найдено автосохранение этой карты. Восстановить?")){
+     state=d.state;initDrawn=d.initDrawn||[];initTurnIndex=Number.isInteger(d.initTurnIndex)?d.initTurnIndex:-1;
+     combatRound=d.combatRound||1;heldTurns=d.heldTurns||[];interruptedTurnStack=d.interruptedTurnStack||[];jokerUsed=d.jokerUsed||[];panX=d.panX||0;panY=d.panY||0;zoom=d.zoom||1;
+     render();initRenderRows();initRefreshNpcTokens();
+   }
+ }catch(e){}
+}
+setInterval(saveBattleLocal,5000);
+window.addEventListener("beforeunload",saveBattleLocal);
+setTimeout(loadBattleLocal,100);
 
 </script>
 </body>

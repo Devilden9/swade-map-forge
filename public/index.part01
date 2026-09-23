@@ -1,11 +1,4 @@
-d> Привязка к сетке</label>
- </div>
- <div class="hint"><b>Как пользоваться:</b><br>1. Выбери «Токен», «Стена» и т.п.<br>2. Кликни по карте.<br>3. Переключись на «Выбор» и перетаскивай объект.<br><br>Колесо — масштаб. Средняя кнопка мыши — камера. Delete — удалить.</div>
-</aside>
-
-<main class="stage" id="stage">
- <div class="world" id="world"><div class="map" id="map"><img id="mapImage" class="mapImage hidden" alt=""><div class="grid" id="grid"></div></div></div>
- <div id="measureLine" class="measure hidden"></div><div id="measureLabel" class="measureLabel hidden"></div>
+easure hidden"></div><div id="measureLabel" class="measureLabel hidden"></div>
 
 
  <div class="mpPanel hidden" id="mpPanel">
@@ -18,14 +11,6 @@ d> Привязка к сетке</label>
   <button id="createRoom" style="width:100%;margin-top:8px">Создать новую комнату</button>
   <button id="copyInvite" style="width:100%;margin-top:8px" disabled>Скопировать приглашение</button>
   <div class="players" id="players">Не подключено.</div>
-  <div id="gmControls" class="gmOnly">
-   <label>Игрок для хода</label><select id="turnPlayer"></select>
-   <button id="setTurnBtn" style="width:100%;margin-top:7px">Передать ход</button>
-   <label>Назначить токен игроку</label><select id="assignPlayer"></select>
-   <select id="assignToken" style="margin-top:5px"></select>
-   <button id="assignTokenBtn" style="width:100%;margin-top:7px">Назначить токен</button>
-  </div>
-  <div class="playerOnly" style="display:none;margin-top:9px"><button id="drawInitiative">🃏 Тянуть инициативу</button></div>
   <p class="hint">Карта, токены и броски кубов синхронизируются между участниками комнаты. Создатель комнаты становится GM.</p>
  </div>
 
@@ -51,11 +36,40 @@ d> Привязка к сетке</label>
   <button id="clearDice" style="width:100%;margin-top:8px">Очистить историю</button>
  </div>
 
- <div class="initiativePanel hidden" id="initiativePanel"><h3>Инициатива</h3><div class="initiativeCard" id="initiativeCard">—</div><div class="hint" id="initiativeWho"></div></div>
- <div id="toast">Выбери инструмент слева и кликни по карте</div>
+ 
+ <div class="initiativeDraft hidden" id="initiativeDraft">
+  <h2>🃏 Savage Worlds — Инициатива</h2>
+  <div class="initTop">
+   <div class="initDeck">SWADE</div>
+   <div class="initCard" id="initCard"><div class="initCorner" id="initA">—</div><div class="initSuit" id="initSuit">?</div><div class="initCorner initBottom" id="initB">—</div></div>
+  </div>
+  <div class="initActions">
+   <button id="initDraw">Вытянуть карту</button>
+   <button id="initNext">Другой игрок</button>
+   <button id="initReset">Новая колода</button><button id="initEndTurn" style="grid-column:1/-1">✓ Завершить ход</button>
+<button id="initHoldTurn" style="grid-column:1/-1">⏸ Удержать ход</button>
+<button id="jokerInterrupt" class="hidden" style="grid-column:1/-1">🃏 Перехватить инициативу</button>
+<div id="initiativeRollBonus" class="hidden" style="grid-column:1/-1;padding:6px;border:1px solid #7b5f2b;border-radius:7px">
+  Модификатор инициативы: <b id="initiativeRollBonusValue">0</b> ко всем броскам
+</div>
+<div id="jokerBonusHint" class="hidden" style="grid-column:1/-1;padding:6px;border:1px solid #7b5f2b;border-radius:7px">🃏 Джокер: <b>+2 ко всем броскам</b></div>
+<div id="combatRoundBox" style="grid-column:1/-1">
+  Раунд: <b id="combatRound">1</b>
+  <button id="initNewRound" type="button" style="float:right;padding:3px 7px">Новый раунд</button>
+  <div style="clear:both"></div>
+</div><button id="initNpcDeal" class="gmOnly" style="grid-column:1/-1">🎴 Раздать карты всем токенам</button>
+  </div>
+  <div class="gmOnly" style="margin-top:10px">
+      <label>Токены на карте</label>
+      <div id="initNpcTokens" class="hint" style="padding:7px;background:#0f1318;border:1px solid #414b57;border-radius:6px;max-height:120px;overflow:auto">Добавьте токены на карту.</div>
+     </div>
+     <div class="hint" id="initCount" style="margin-top:8px"></div>
+  <div class="initRows" id="initRows"></div>
+ </div>
+<div id="toast">Выбери инструмент слева и кликни по карте</div>
 </main>
 
-<aside class="right gmOnly">
+<aside class="right">
  <div class="section"><h3>Выбранный объект</h3>
   <div id="none" class="hint">Ничего не выбрано.</div>
   <div id="props" class="hidden">
@@ -87,8 +101,10 @@ const current=()=>state.items.find(i=>i.id===selected);
 function remember(){history.push(JSON.stringify(state));if(history.length>80)history.shift();future=[]}
 function syncInputs(){$("#cols").value=state.cols;$("#rows").value=state.rows;$("#cell").value=state.cell}
 function render(){
+ const __mapImg=document.querySelector("#mapImage");
+ if(__mapImg){if(state.mapImage){__mapImg.src=state.mapImage;__mapImg.classList.remove("hidden")}else{__mapImg.removeAttribute("src");__mapImg.classList.add("hidden")}}
+
  map.style.width=(state.cols*state.cell)+"px"; map.style.height=(state.rows*state.cell)+"px";
- const bg=$("#mapImage"); if(state.mapImage){bg.src=state.mapImage;bg.classList.remove("hidden")}else{bg.removeAttribute("src");bg.classList.add("hidden")}
  grid.style.backgroundSize=state.cell+"px "+state.cell+"px"; grid.style.display=$("#gridToggle").checked?"block":"none";
  world.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;
  map.querySelectorAll(".entity").forEach(e=>e.remove());
@@ -120,4 +136,45 @@ map.addEventListener("pointerdown",ev=>{
  if(tool==="pan"||ev.button===1){drag={kind:"pan",sx:ev.clientX,sy:ev.clientY,px:panX,py:panY};stage.setPointerCapture?.(ev.pointerId);return}
  if(tool==="erase"){if(hit){remember();state.items=state.items.filter(i=>i.id!==hit.dataset.id);selected=null;render()}return}
  if(tool==="measure"){drag={kind:"measure",start:p};showMeasure(p,p);return}
- if(tool==="s
+ if(tool==="select"){
+   if(!hit){selected=null;render();return}
+   selected=hit.dataset.id;const it=current();remember();drag={kind:"item",it,dx:p.x-it.x,dy:p.y-it.y};render();return;
+ }
+ add(tool,p.x,p.y);
+});
+window.addEventListener("pointermove",ev=>{
+ if(!drag)return;
+ if(drag.kind==="pan"){panX=drag.px+(ev.clientX-drag.sx);panY=drag.py+(ev.clientY-drag.sy);render()}
+ if(drag.kind==="item"){const p=local(ev);drag.it.x=snap(p.x-drag.dx);drag.it.y=snap(p.y-drag.dy);render()}
+ if(drag.kind==="measure")showMeasure(drag.start,local(ev));
+});
+window.addEventListener("pointerup",()=>{
+ if(drag&&drag.kind==="measure"){$("#measureLine").classList.add("hidden");$("#measureLabel").classList.add("hidden")}
+ drag=null;
+});
+function showMeasure(a,b){
+ const ax=a.x*zoom+panX,ay=a.y*zoom+panY,bx=b.x*zoom+panX,by=b.y*zoom+panY,dx=bx-ax,dy=by-ay,d=Math.hypot(dx,dy);
+ const line=$("#measureLine"),lab=$("#measureLabel");line.classList.remove("hidden");lab.classList.remove("hidden");
+ line.style.left=ax+"px";line.style.top=ay+"px";line.style.width=d+"px";line.style.transform=`rotate(${Math.atan2(dy,dx)*180/Math.PI}deg)`;
+ lab.style.left=(bx+8)+"px";lab.style.top=(by+8)+"px";lab.textContent=(Math.hypot(b.x-a.x,b.y-a.y)/state.cell).toFixed(1)+" клет.";
+}
+stage.addEventListener("wheel",ev=>{
+ ev.preventDefault();const old=zoom,r=stage.getBoundingClientRect(),mx=ev.clientX-r.left,my=ev.clientY-r.top;
+ zoom=Math.max(.25,Math.min(3,zoom*(ev.deltaY<0?1.12:.89)));panX=mx-(mx-panX)*(zoom/old);panY=my-(my-panY)*(zoom/old);render();
+},{passive:false});
+document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>{
+ tool=b.dataset.tool;document.querySelectorAll("[data-tool]").forEach(x=>x.classList.toggle("active",x===b));stage.style.cursor=tool==="pan"?"grab":tool==="select"?"default":"crosshair";
+}));
+$("#gridToggle").addEventListener("change",render);
+$("#resize").addEventListener("click",()=>{remember();state.cols=Math.max(5,Number($("#cols").value)||30);state.rows=Math.max(5,Number($("#rows").value)||22);state.cell=Math.max(20,Number($("#cell").value)||48);render()});
+["pName","pX","pY","pW","pH","pR"].forEach(id=>$("#"+id).addEventListener("change",()=>{
+ const it=current();if(!it)return;remember();it.name=$("#pName").value;it.x=Number($("#pX").value)||0;it.y=Number($("#pY").value)||0;it.w=Math.max(4,Number($("#pW").value)||4);it.h=Math.max(4,Number($("#pH").value)||4);it.r=Number($("#pR").value)||0;render();
+}));
+function del(){if(!selected)return;remember();state.items=state.items.filter(i=>i.id!==selected);selected=null;render()}
+$("#delete").addEventListener("click",del);
+window.addEventListener("keydown",ev=>{if(ev.key==="Delete"&&!["INPUT","TEXTAREA"].includes(document.activeElement.tagName))del()});
+$("#undo").addEventListener("click",()=>{if(!history.length)return;future.push(JSON.stringify(state));state=JSON.parse(history.pop());selected=null;syncInputs();render()});
+$("#redo").addEventListener("click",()=>{if(!future.length)return;history.push(JSON.stringify(state));state=JSON.parse(future.pop());selected=null;syncInputs();render()});
+$("#save").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="swade-map.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$("#load").addEventListener("click",()=>$("#file").click());
+$("#file").addEventListener("change",async ev=>{const f=ev.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data||!Array.isArray(data.items))throw new Error();state=data;selected=null;history=[];future=[];syncInputs();render()}catch(e){alert("Файл проекта 
