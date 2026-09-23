@@ -22,8 +22,8 @@ label{display:block;color:var(--muted);margin:8px 0 4px}input[type=number],input
 .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hint{font-size:12px;color:#98938a;line-height:1.45}
 .stage{position:relative;overflow:hidden;background:#090b0e;touch-action:none;cursor:crosshair}
 .world{position:absolute;left:0;top:0;transform-origin:0 0}.map{position:absolute;left:0;top:0;background:#2a2d2c;box-shadow:0 0 50px #000}
-.grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(to right,rgba(240,240,230,.18) 1px,transparent 1px),linear-gradient(to bottom,rgba(240,240,230,.18) 1px,transparent 1px)}
-.entity{position:absolute;display:flex;align-items:center;justify-content:center;user-select:none;cursor:grab;overflow:hidden}
+.mapImage{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;z-index:0}.grid{z-index:1;position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(to right,rgba(240,240,230,.18) 1px,transparent 1px),linear-gradient(to bottom,rgba(240,240,230,.18) 1px,transparent 1px)}
+.entity{z-index:2;position:absolute;display:flex;align-items:center;justify-content:center;user-select:none;cursor:grab;overflow:hidden}
 .entity.selected{outline:3px solid #f0cf76;outline-offset:2px}
 .token{border-radius:50%;border:3px solid #ddd6c9;background:#53616e;font-weight:bold}
 .wall{background:#121417;border:1px solid #555d67}.door{background:#6b452c;border:2px solid #b87a4c}.prop{background:#594936;border:2px solid #88745a;border-radius:5px}
@@ -58,7 +58,7 @@ label{display:block;color:var(--muted);margin:8px 0 4px}input[type=number],input
  <div class="brand">SAVAGE WORLDS · MAP FORGE v2</div>
  <button id="undo">↶ Undo</button><button id="redo">↷ Redo</button>
  <button id="save">Сохранить JSON</button><button id="load">Загрузить</button><input id="file" type="file" accept=".json,application/json" hidden>
- <button id="export">Экспорт PNG</button><button id="diceToggle">🎲 Кубы</button><button id="mpToggle">🌐 Multiplayer</button><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
+ <button id="export">Экспорт PNG</button><button id="imageUploadBtn">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="mpToggle">🌐 Multiplayer</button><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
 </header>
 <div class="workspace">
 <aside class="left">
