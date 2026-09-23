@@ -1,16 +1,22 @@
 elect"){
    if(!hit){selected=null;render();return}
-   selected=hit.dataset.id;const it=current();remember();drag={kind:"item",it,dx:p.x-it.x,dy:p.y-it.y};render();return;
+   selected=hit.dataset.id;const it=current();
+   if(!isGM && room){
+     if(!it || it.type!=="token" || it.id!==myTokenId || myClientId!==turnClientId){selected=null;render();return}
+     drag={kind:"item",it,dx:p.x-it.x,dy:p.y-it.y,playerMove:true};render();return;
+   }
+   remember();drag={kind:"item",it,dx:p.x-it.x,dy:p.y-it.y};render();return;
  }
  add(tool,p.x,p.y);
 });
 window.addEventListener("pointermove",ev=>{
  if(!drag)return;
  if(drag.kind==="pan"){panX=drag.px+(ev.clientX-drag.sx);panY=drag.py+(ev.clientY-drag.sy);render()}
- if(drag.kind==="item"){const p=local(ev);drag.it.x=snap(p.x-drag.dx);drag.it.y=snap(p.y-drag.dy);render()}
+ if(drag.kind==="item"){const p=local(ev);drag.it.x=snap(p.x-drag.dx);drag.it.y=snap(p.y-drag.dy);if(drag.playerMove){originalRender?.()}else render()}
  if(drag.kind==="measure")showMeasure(drag.start,local(ev));
 });
 window.addEventListener("pointerup",()=>{
+ if(drag&&drag.kind==="item"&&drag.playerMove&&socket&&socket.readyState===1){socket.send(JSON.stringify({type:"moveToken",room,tokenId:drag.it.id,x:drag.it.x,y:drag.it.y}))}
  if(drag&&drag.kind==="measure"){$("#measureLine").classList.add("hidden");$("#measureLabel").classList.add("hidden")}
  drag=null;
 });
