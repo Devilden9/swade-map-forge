@@ -49,6 +49,10 @@ label{display:block;color:var(--muted);margin:8px 0 4px}input[type=number],input
 .players{margin-top:10px;padding-top:8px;border-top:1px solid #39414b;font-size:12px;line-height:1.6}
 .onlineDot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#83c987;margin-right:6px}
 #netState{font-size:12px;color:#aaa397}
+.roleBadge{padding:5px 8px;border:1px solid #665b3d;border-radius:6px;color:#e0c681;font-size:12px}
+.playerOnly{display:none}.player-mode .gmOnly{display:none!important}.player-mode .playerOnly{display:inline-block}
+.player-mode .left .section:not(:first-child){display:none}.player-mode .left [data-tool]:not([data-tool="select"]):not([data-tool="pan"]):not([data-tool="measure"]){display:none}
+.initiativePanel{position:absolute;right:18px;bottom:18px;width:280px;background:#151a20f2;border:1px solid #586270;border-radius:12px;padding:12px;z-index:50}.initiativeCard{font:700 28px Georgia,serif;text-align:center;color:#f0d37f;padding:10px}
 
 </style>
 </head>
@@ -56,19 +60,19 @@ label{display:block;color:var(--muted);margin:8px 0 4px}input[type=number],input
 <div id="app">
 <header class="top">
  <div class="brand">SAVAGE WORLDS · MAP FORGE v2</div>
- <button id="undo">↶ Undo</button><button id="redo">↷ Redo</button>
- <button id="save">Сохранить JSON</button><button id="load">Загрузить</button><input id="file" type="file" accept=".json,application/json" hidden>
- <button id="export">Экспорт PNG</button><button id="imageUploadBtn">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="mpToggle">🌐 Multiplayer</button><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
+ <span id="roleBadge" class="roleBadge">Не подключено</span><button id="undo" class="gmOnly">↶ Undo</button><button id="redo" class="gmOnly">↷ Redo</button>
+ <button id="save" class="gmOnly">Сохранить JSON</button><button id="load" class="gmOnly">Загрузить</button><input id="file" type="file" accept=".json,application/json" hidden>
+ <button id="export" class="gmOnly">Экспорт PNG</button><button id="imageUploadBtn" class="gmOnly">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="mpToggle">🌐 Multiplayer</button><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
 </header>
 <div class="workspace">
 <aside class="left">
  <div class="section"><h3>Инструменты</h3><div class="tools">
   <button data-tool="select" class="active">↖ Выбор</button><button data-tool="pan">✥ Камера</button>
-  <button data-tool="wall">▰ Стена</button><button data-tool="door">▥ Дверь</button>
-  <button data-tool="token">● Токен</button><button data-tool="prop">■ Объект</button>
-  <button data-tool="fog">☁ Туман</button><button data-tool="erase">⌫ Ластик</button>
-  <button data-tool="measure">↔ Линейка</button><button data-tool="blast">◉ Blast</button>
-  <button data-tool="cone">◁ Cone</button>
+  <button data-tool="wall" class="gmOnly">▰ Стена</button><button data-tool="door" class="gmOnly">▥ Дверь</button>
+  <button data-tool="token" class="gmOnly">● Токен</button><button data-tool="prop" class="gmOnly">■ Объект</button>
+  <button data-tool="fog" class="gmOnly">☁ Туман</button><button data-tool="erase" class="gmOnly">⌫ Ластик</button>
+  <button data-tool="measure">↔ Линейка</button><button data-tool="blast" class="gmOnly">◉ Blast</button>
+  <button data-tool="cone" class="gmOnly">◁ Cone</button>
  </div></div>
  <div class="section"><h3>Карта</h3>
   <label>Ширина, клеток</label><input id="cols" type="number" min="5" max="100" value="30">
