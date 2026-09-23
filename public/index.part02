@@ -38,6 +38,31 @@ window.addEventListener("keydown",ev=>{if(ev.key==="Delete"&&!["INPUT","TEXTAREA
 $("#undo").addEventListener("click",()=>{if(!history.length)return;future.push(JSON.stringify(state));state=JSON.parse(history.pop());selected=null;syncInputs();render()});
 $("#redo").addEventListener("click",()=>{if(!future.length)return;history.push(JSON.stringify(state));state=JSON.parse(future.pop());selected=null;syncInputs();render()});
 $("#save").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="swade-map.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$("#imageUploadBtn").addEventListener("click",()=>$("#imageFile").click());
+$("#imageFile").addEventListener("change",ev=>{
+ const file=ev.target.files&&ev.target.files[0]; if(!file)return;
+ if(!file.type.startsWith("image/") && !/\.(png|jpe?g|webp|gif|bmp|svg|avif)$/i.test(file.name)){alert("Выберите файл изображения.");return}
+ const reader=new FileReader();
+ reader.onload=()=>{
+   const img=new Image();
+   img.onload=()=>{
+     remember();
+     state.mapImage=reader.result;
+     const targetW=Math.max(1,state.cols*state.cell),targetH=Math.max(1,state.rows*state.cell);
+     const ratio=img.naturalWidth/img.naturalHeight, mapRatio=targetW/targetH;
+     if(Math.abs(ratio-mapRatio)>.03){
+       const newRows=Math.max(5,Math.min(100,Math.round(state.cols/ratio)));
+       state.rows=newRows; syncInputs();
+     }
+     render();
+     ev.target.value="";
+   };
+   img.onerror=()=>alert("Браузер не смог прочитать этот формат изображения.");
+   img.src=reader.result;
+ };
+ reader.onerror=()=>alert("Не удалось прочитать изображение.");
+ reader.readAsDataURL(file);
+});
 $("#load").addEventListener("click",()=>$("#file").click());
 $("#file").addEventListener("change",async ev=>{const f=ev.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data||!Array.isArray(data.items))throw new Error();state=data;selected=null;history=[];future=[];syncInputs();render()}catch(e){alert("Файл проекта повреждён или имеет неверный формат.")}});
 $("#export").addEventListener("click",()=>{
