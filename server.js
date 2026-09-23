@@ -2,11 +2,19 @@ const express = require("express");
 const http = require("http");
 const { WebSocketServer } = require("ws");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });
-app.use(express.static(path.join(__dirname, "public")));
+const publicDir = path.join(__dirname, "public");
+app.get("/", (req,res)=>{
+  try {
+    const html=[0,1,2,3].map(i=>fs.readFileSync(path.join(publicDir,"index.part0"+i),"utf8")).join("");
+    res.type("html").send(html);
+  } catch(e) { res.status(500).send("Frontend load error"); }
+});
+app.use(express.static(publicDir));
 
 const rooms = new Map();
 function getRoom(code){
@@ -51,4 +59,4 @@ wss.on("connection", ws=>{
   });
 });
 const PORT=process.env.PORT||3000;
-server.listen(PORT,()=>console.log(`SWADE Map Forge: http://localhost:${PORT}`));
+server.listen(PORT,()=>console.log(`SWADE Map Forge listening on ${PORT}`));
