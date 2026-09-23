@@ -18,6 +18,14 @@ d> Привязка к сетке</label>
   <button id="createRoom" style="width:100%;margin-top:8px">Создать новую комнату</button>
   <button id="copyInvite" style="width:100%;margin-top:8px" disabled>Скопировать приглашение</button>
   <div class="players" id="players">Не подключено.</div>
+  <div id="gmControls" class="gmOnly">
+   <label>Игрок для хода</label><select id="turnPlayer"></select>
+   <button id="setTurnBtn" style="width:100%;margin-top:7px">Передать ход</button>
+   <label>Назначить токен игроку</label><select id="assignPlayer"></select>
+   <select id="assignToken" style="margin-top:5px"></select>
+   <button id="assignTokenBtn" style="width:100%;margin-top:7px">Назначить токен</button>
+  </div>
+  <div class="playerOnly" style="display:none;margin-top:9px"><button id="drawInitiative">🃏 Тянуть инициативу</button></div>
   <p class="hint">Карта, токены и броски кубов синхронизируются между участниками комнаты. Создатель комнаты становится GM.</p>
  </div>
 
@@ -43,10 +51,11 @@ d> Привязка к сетке</label>
   <button id="clearDice" style="width:100%;margin-top:8px">Очистить историю</button>
  </div>
 
+ <div class="initiativePanel hidden" id="initiativePanel"><h3>Инициатива</h3><div class="initiativeCard" id="initiativeCard">—</div><div class="hint" id="initiativeWho"></div></div>
  <div id="toast">Выбери инструмент слева и кликни по карте</div>
 </main>
 
-<aside class="right">
+<aside class="right gmOnly">
  <div class="section"><h3>Выбранный объект</h3>
   <div id="none" class="hint">Ничего не выбрано.</div>
   <div id="props" class="hidden">
