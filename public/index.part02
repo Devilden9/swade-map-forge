@@ -1,0 +1,81 @@
+elect"){
+   if(!hit){selected=null;render();return}
+   selected=hit.dataset.id;const it=current();remember();drag={kind:"item",it,dx:p.x-it.x,dy:p.y-it.y};render();return;
+ }
+ add(tool,p.x,p.y);
+});
+window.addEventListener("pointermove",ev=>{
+ if(!drag)return;
+ if(drag.kind==="pan"){panX=drag.px+(ev.clientX-drag.sx);panY=drag.py+(ev.clientY-drag.sy);render()}
+ if(drag.kind==="item"){const p=local(ev);drag.it.x=snap(p.x-drag.dx);drag.it.y=snap(p.y-drag.dy);render()}
+ if(drag.kind==="measure")showMeasure(drag.start,local(ev));
+});
+window.addEventListener("pointerup",()=>{
+ if(drag&&drag.kind==="measure"){$("#measureLine").classList.add("hidden");$("#measureLabel").classList.add("hidden")}
+ drag=null;
+});
+function showMeasure(a,b){
+ const ax=a.x*zoom+panX,ay=a.y*zoom+panY,bx=b.x*zoom+panX,by=b.y*zoom+panY,dx=bx-ax,dy=by-ay,d=Math.hypot(dx,dy);
+ const line=$("#measureLine"),lab=$("#measureLabel");line.classList.remove("hidden");lab.classList.remove("hidden");
+ line.style.left=ax+"px";line.style.top=ay+"px";line.style.width=d+"px";line.style.transform=`rotate(${Math.atan2(dy,dx)*180/Math.PI}deg)`;
+ lab.style.left=(bx+8)+"px";lab.style.top=(by+8)+"px";lab.textContent=(Math.hypot(b.x-a.x,b.y-a.y)/state.cell).toFixed(1)+" клет.";
+}
+stage.addEventListener("wheel",ev=>{
+ ev.preventDefault();const old=zoom,r=stage.getBoundingClientRect(),mx=ev.clientX-r.left,my=ev.clientY-r.top;
+ zoom=Math.max(.25,Math.min(3,zoom*(ev.deltaY<0?1.12:.89)));panX=mx-(mx-panX)*(zoom/old);panY=my-(my-panY)*(zoom/old);render();
+},{passive:false});
+document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>{
+ tool=b.dataset.tool;document.querySelectorAll("[data-tool]").forEach(x=>x.classList.toggle("active",x===b));stage.style.cursor=tool==="pan"?"grab":tool==="select"?"default":"crosshair";
+}));
+$("#gridToggle").addEventListener("change",render);
+$("#resize").addEventListener("click",()=>{remember();state.cols=Math.max(5,Number($("#cols").value)||30);state.rows=Math.max(5,Number($("#rows").value)||22);state.cell=Math.max(20,Number($("#cell").value)||48);render()});
+["pName","pX","pY","pW","pH","pR"].forEach(id=>$("#"+id).addEventListener("change",()=>{
+ const it=current();if(!it)return;remember();it.name=$("#pName").value;it.x=Number($("#pX").value)||0;it.y=Number($("#pY").value)||0;it.w=Math.max(4,Number($("#pW").value)||4);it.h=Math.max(4,Number($("#pH").value)||4);it.r=Number($("#pR").value)||0;render();
+}));
+function del(){if(!selected)return;remember();state.items=state.items.filter(i=>i.id!==selected);selected=null;render()}
+$("#delete").addEventListener("click",del);
+window.addEventListener("keydown",ev=>{if(ev.key==="Delete"&&!["INPUT","TEXTAREA"].includes(document.activeElement.tagName))del()});
+$("#undo").addEventListener("click",()=>{if(!history.length)return;future.push(JSON.stringify(state));state=JSON.parse(history.pop());selected=null;syncInputs();render()});
+$("#redo").addEventListener("click",()=>{if(!future.length)return;history.push(JSON.stringify(state));state=JSON.parse(future.pop());selected=null;syncInputs();render()});
+$("#save").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="swade-map.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$("#load").addEventListener("click",()=>$("#file").click());
+$("#file").addEventListener("change",async ev=>{const f=ev.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data||!Array.isArray(data.items))throw new Error();state=data;selected=null;history=[];future=[];syncInputs();render()}catch(e){alert("Файл проекта повреждён или имеет неверный формат.")}});
+$("#export").addEventListener("click",()=>{
+ const c=document.createElement("canvas");c.width=state.cols*state.cell;c.height=state.rows*state.cell;const x=c.getContext("2d");
+ x.fillStyle="#2a2d2c";x.fillRect(0,0,c.width,c.height);
+ if($("#gridToggle").checked){x.strokeStyle="rgba(240,240,230,.18)";x.lineWidth=1;for(let i=0;i<=state.cols;i++){x.beginPath();x.moveTo(i*state.cell,0);x.lineTo(i*state.cell,c.height);x.stroke()}for(let j=0;j<=state.rows;j++){x.beginPath();x.moveTo(0,j*state.cell);x.lineTo(c.width,j*state.cell);x.stroke()}}
+ for(const it of state.items){x.save();x.translate(it.x+it.w/2,it.y+it.h/2);x.rotate((it.r||0)*Math.PI/180);
+   if(it.type==="token"){x.fillStyle="#53616e";x.strokeStyle="#ddd6c9";x.lineWidth=3;x.beginPath();x.arc(0,0,Math.min(it.w,it.h)/2,0,Math.PI*2);x.fill();x.stroke()}
+   else if(it.type==="cone"){x.fillStyle="rgba(225,105,38,.35)";x.beginPath();x.moveTo(-it.w/2,0);x.lineTo(it.w/2,-it.h/2);x.lineTo(it.w/2,it.h/2);x.closePath();x.fill()}
+   else {x.fillStyle=it.type==="wall"?"#121417":it.type==="door"?"#6b452c":it.type==="fog"?"rgba(3,4,5,.88)":it.type==="blast"?"rgba(225,105,38,.28)":"#594936";if(it.type==="blast"){x.beginPath();x.ellipse(0,0,it.w/2,it.h/2,0,0,Math.PI*2);x.fill()}else x.fillRect(-it.w/2,-it.h/2,it.w,it.h)}
+   x.restore();
+ }
+ const a=document.createElement("a");a.href=c.toDataURL("image/png");a.download="swade-map.png";a.click();
+});
+setTimeout(()=>$("#toast").classList.add("hidden"),3500);
+render();
+
+// ---- Savage Worlds dice roller ----
+const dicePanel=$("#dicePanel"), diceBig=$("#diceBig"), diceSub=$("#diceSub"), diceHistory=$("#diceHistory");
+$("#diceToggle").addEventListener("click",()=>dicePanel.classList.toggle("hidden"));
+
+function rollOne(sides, ace){
+ let total=0, rolls=[], r;
+ do { r=1+Math.floor(Math.random()*sides); rolls.push(r); total+=r; } while(ace && r===sides);
+ return {total,rolls,sides};
+}
+function rollText(r){return "d"+r.sides+": "+r.rolls.join(" + ")+" = "+r.total}
+function outcome(total){
+ if(total<4)return {text:"Провал",cls:"fail"};
+ const raises=Math.floor((total-4)/4);
+ return raises ? {text:"Успех + подъёмов: "+raises,cls:"raise"} : {text:"Успех",cls:"success"};
+}
+function addHist(title, detail, cls=""){
+ const d=document.createElement("div"); d.className="hist "+cls;
+ d.innerHTML="<b>"+title+"</b><br>"+detail; diceHistory.prepend(d);
+ while(diceHistory.children.length>20)diceHistory.lastChild.remove();
+}
+document.querySelectorAll(".dieBtn").forEach(b=>b.addEventListener("click",()=>{
+ const sides=Number(b.dataset.die),ace=$("#acing").checked,r=rollOne(sides,ace),mod=Number($("#diceMod").value)||0,total=r.total+mod;
+ diceBig.textContent=total; diceSub.textContent=rollText(r)+(mod?` ${mod>=0?"+":""}${mod}`:"");
+ addHist
