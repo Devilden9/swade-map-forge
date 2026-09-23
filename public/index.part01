@@ -4,7 +4,7 @@ d> Привязка к сетке</label>
 </aside>
 
 <main class="stage" id="stage">
- <div class="world" id="world"><div class="map" id="map"><div class="grid" id="grid"></div></div></div>
+ <div class="world" id="world"><div class="map" id="map"><img id="mapImage" class="mapImage hidden" alt=""><div class="grid" id="grid"></div></div></div>
  <div id="measureLine" class="measure hidden"></div><div id="measureLabel" class="measureLabel hidden"></div>
 
 
@@ -68,7 +68,7 @@ d> Привязка к сетке</label>
 "use strict";
 const $=q=>document.querySelector(q);
 const stage=$("#stage"),world=$("#world"),map=$("#map"),grid=$("#grid");
-let state={cols:30,rows:22,cell:48,items:[]};
+let state={cols:30,rows:22,cell:48,items:[],mapImage:null};
 let tool="select",selected=null,zoom=1,panX=35,panY=35,drag=null,history=[],future=[];
 
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -79,6 +79,7 @@ function remember(){history.push(JSON.stringify(state));if(history.length>80)his
 function syncInputs(){$("#cols").value=state.cols;$("#rows").value=state.rows;$("#cell").value=state.cell}
 function render(){
  map.style.width=(state.cols*state.cell)+"px"; map.style.height=(state.rows*state.cell)+"px";
+ const bg=$("#mapImage"); if(state.mapImage){bg.src=state.mapImage;bg.classList.remove("hidden")}else{bg.removeAttribute("src");bg.classList.add("hidden")}
  grid.style.backgroundSize=state.cell+"px "+state.cell+"px"; grid.style.display=$("#gridToggle").checked?"block":"none";
  world.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;
  map.querySelectorAll(".entity").forEach(e=>e.remove());
