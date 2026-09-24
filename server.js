@@ -1,20 +1,11 @@
-const express = require("express");
+
 const http = require("http");
 const { WebSocketServer } = require("ws");
 const path = require("path");
 const fs = require("fs");
 
-const app = express();
-const server = http.createServer(app);
+const server = http.createServer((req,res)=>{res.setHeader("Content-Type","text/html; charset=utf-8");fs.createReadStream(path.join(__dirname,"public/index.html")).pipe(res)});
 const wss = new WebSocketServer({ server, path: "/ws" });
-const publicDir = path.join(__dirname, "public");
-app.get("/", (req,res)=>{
-  try {
-    const html=[0,1,2,3].map(i=>fs.readFileSync(path.join(publicDir,"index.part0"+i),"utf8")).join("");
-    res.type("html").send(html);
-  } catch(e) { res.status(500).send("Frontend load error"); }
-});
-app.use(express.static(publicDir));
 
 const rooms = new Map();
 function getRoom(code){
@@ -37,14 +28,35 @@ wss.on("connection", ws=>{
     if(msg.type==="join"){
       const code=String(msg.room||"").toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
       if(!code) return send(ws,{type:"error",message:"Неверный код комнаты."});
+      if(joinedCode)return;
+      if(!String(msg.name||"").trim())return send(ws,{type:"error",message:"Введите имя."});
       joinedCode=code; const room=getRoom(code);
-      room.clients.set(clientId,{ws,name:String(msg.name||"Игрок").slice(0,32),tokenId:null});
+      room.clients.set(clientId,{ws,name:String(msg.name).trim().slice(0,32),tokenId:null});
       if(!room.gmId) room.gmId=clientId;
       send(ws,{type:"welcome",clientId,isGM:room.gmId===clientId,state:room.state,turnClientId:room.turnClientId});
       broadcast(room,{type:"players",players:players(room)});
+    } else if(msg.type==="transferGM" && joinedCode){
+      const room=getRoom(joinedCode);
+      if(room.gmId!==clientId)return send(ws,{type:"error",message:"Только текущий GM может передать роль."});
+      if(msg.targetId===clientId||!room.clients.has(msg.targetId))return send(ws,{type:"error",message:"Игрок уже отключился."});
+      room.gmId=msg.targetId;broadcast(room,{type:"players",players:players(room)});
+      broadcast(room,{type:"gmTransferred",name:room.clients.get(msg.targetId).name});
+    } else if(msg.type==="benny" && joinedCode){
+      const room=getRoom(joinedCode),cl=room.clients.get(clientId),delta=msg.delta;
+      if(![1,-1].includes(delta)||!room.state)return;
+      if(clientId!==room.gmId&&(delta!==-1||cl.tokenId!==msg.tokenId))return send(ws,{type:"error",message:"Игрок может тратить только свои фишки."});
+      const t=room.state.items?.find(t=>t.type==="token"&&t.id===msg.tokenId);if(!t)return;
+      const count=Math.max(0,Math.floor(Number(t.bennies)||0));if(count+delta<0)return;
+      t.bennies=count+delta;
+      room.state.battleLog=room.state.battleLog||[];
+      room.state.battleLog.push({time:new Date().toISOString(),round:room.state.battleSession?.combatRound||1,actor:cl.name,text:`${t.name||"Токен"}: фишки ${delta>0?"+1":"−1"} (${count} → ${t.bennies})`});
+      broadcast(room,{type:"state",clientId:"server",state:room.state});
     } else if(msg.type==="state" && joinedCode){
       const room=getRoom(joinedCode);
       if(clientId!==room.gmId) return send(ws,{type:"error",message:"Только GM может редактировать карту."});
+      if(!msg.state||!Array.isArray(msg.state.items))return;
+      if(room.state){for(const t of msg.state.items){const old=room.state.items?.find(i=>i.id===t.id);if(old)t.bennies=old.bennies||0}
+      const byKey=new Map();for(const row of [...(room.state.battleLog||[]),...(msg.state.battleLog||[])])byKey.set(JSON.stringify(row),row);msg.state.battleLog=[...byKey.values()].sort((a,b)=>a.time.localeCompare(b.time));}
       room.state=msg.state;
       broadcast(room,{type:"state",clientId,state:msg.state},clientId);
     } else if(msg.type==="assignToken" && joinedCode){
@@ -85,3 +97,4 @@ wss.on("connection", ws=>{
 });
 const PORT=process.env.PORT||3000;
 server.listen(PORT,()=>console.log(`SWADE Map Forge listening on ${PORT}`));
+

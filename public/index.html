@@ -1,0 +1,1023 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Savage Worlds — Map Forge v2</title>
+<style>
+:root{--bg:#0d1014;--panel:#171c22;--panel2:#202731;--line:#3d4652;--text:#eee8dc;--muted:#aaa397;--gold:#d0b36f}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--text);font:14px Arial,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{background:#252c35;border:1px solid #4b5664;border-radius:7px;padding:8px 10px;cursor:pointer}
+button:hover{background:#323b47}.active{outline:2px solid var(--gold);background:#403a29}
+#app{height:100%;display:grid;grid-template-rows:54px 1fr}
+.top{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#13171c;border-bottom:1px solid #333b45}
+.brand{font-family:Georgia,serif;font-weight:bold;color:#dfc787;margin-right:10px}.spacer{flex:1}
+.workspace{min-height:0;display:grid;grid-template-columns:210px 1fr 245px}
+aside{background:var(--panel);padding:12px;overflow:auto}.left{border-right:1px solid #333b45}.right{border-left:1px solid #333b45}
+h3{font:700 12px Georgia,serif;letter-spacing:.1em;color:#d8bf80;text-transform:uppercase;margin:4px 0 9px}
+.section{margin-bottom:18px}.tools{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+label{display:block;color:var(--muted);margin:8px 0 4px}input[type=number],input[type=text],select{width:100%;background:#0f1318;border:1px solid #414b57;border-radius:6px;padding:7px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hint{font-size:12px;color:#98938a;line-height:1.45}
+.stage{position:relative;overflow:hidden;background:#090b0e;touch-action:none;cursor:crosshair}
+.world{position:absolute;left:0;top:0;transform-origin:0 0}.map{position:absolute;left:0;top:0;background:#2a2d2c;box-shadow:0 0 50px #000}
+.grid{position:absolute;inset:0;pointer-events:none;z-index:1;background-image:linear-gradient(to right,rgba(240,240,230,.18) 1px,transparent 1px),linear-gradient(to bottom,rgba(240,240,230,.18) 1px,transparent 1px)}
+.entity{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center;user-select:none;cursor:grab;overflow:hidden}
+.entity.selected{outline:3px solid #f0cf76;outline-offset:2px}
+.token{border-radius:50%;border:3px solid #ddd6c9;background:#53616e;font-weight:bold}
+.wall{background:#121417;border:1px solid #555d67}.door{background:#6b452c;border:2px solid #b87a4c}.prop{background:#594936;border:2px solid #88745a;border-radius:5px}
+.fog{background:rgba(3,4,5,.88);border-radius:35%;filter:blur(4px)}.blast{border:2px dashed #ffb35f;background:rgba(225,105,38,.22);border-radius:50%}
+.cone{background:rgba(225,105,38,.28);clip-path:polygon(0 50%,100% 0,100% 100%)}
+.hidden{display:none!important}.status{font-size:12px;color:#aaa}
+.measure{position:absolute;height:2px;background:#f4d36e;transform-origin:0 50%;pointer-events:none;z-index:20}.measureLabel{position:absolute;background:#111d;border:1px solid #8f7a48;border-radius:5px;padding:4px 6px;pointer-events:none;z-index:21}
+#toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);background:#10151be8;border:1px solid #596575;border-radius:8px;padding:8px 12px;z-index:30}
+
+.dicePanel{position:absolute;right:18px;top:18px;width:330px;max-height:calc(100% - 36px);overflow:auto;background:#151a20f2;border:1px solid #586270;border-radius:12px;padding:13px;z-index:50;box-shadow:0 15px 45px #0009}
+.dicePanel h2{font:700 17px Georgia,serif;color:#e0c681;margin:0 0 10px}
+.diceRow{display:flex;gap:6px;flex-wrap:wrap}.dieBtn{min-width:48px;font-weight:bold}
+.diceOptions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.diceResult{margin-top:12px;padding:12px;background:#0d1116;border:1px solid #3f4854;border-radius:9px;text-align:center}
+.diceBig{font:700 32px Georgia,serif;color:#f0d37f}.diceSub{color:#aaa397;margin-top:4px;font-size:12px}
+.diceHistory{margin-top:10px;border-top:1px solid #39414b;padding-top:8px;max-height:180px;overflow:auto}
+.hist{padding:6px 4px;border-bottom:1px solid #292f37;font-size:12px}.success{color:#b9d88d}.raise{color:#f0d37f}.fail{color:#c98b82}
+
+
+.mpPanel{position:absolute;left:18px;top:18px;width:330px;background:#151a20f5;border:1px solid #586270;border-radius:12px;padding:13px;z-index:55;box-shadow:0 15px 45px #0009}
+.mpPanel h2{font:700 17px Georgia,serif;color:#e0c681;margin:0 0 10px}
+.mpLine{display:flex;gap:7px;align-items:end}.mpLine>*{flex:1}
+.players{margin-top:10px;padding-top:8px;border-top:1px solid #39414b;font-size:12px;line-height:1.6}
+.onlineDot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#83c987;margin-right:6px}
+#netState{font-size:12px;color:#aaa397}
+
+
+.initiativeDraft{position:absolute;right:18px;bottom:18px;width:360px;max-height:calc(100% - 36px);overflow:auto;background:#151a20f2;border:1px solid #586270;border-radius:12px;padding:13px;z-index:54;box-shadow:0 15px 45px #0009}
+.initiativeDraft h2{font:700 17px Georgia,serif;color:#e0c681;margin:0 0 10px}
+.initTop{display:grid;grid-template-columns:105px 1fr;gap:12px;align-items:center}
+.initDeck{height:142px;border:3px double #a88f59;border-radius:9px;background:repeating-linear-gradient(45deg,#222a34 0 7px,#171d25 7px 14px);display:grid;place-items:center;color:#d9c17f;font:700 32px Georgia,serif;box-shadow:5px 5px 0 #090b0e}
+.initCard{height:142px;border-radius:9px;background:#eee9dc;color:#171717;position:relative;font-family:Georgia,serif;padding:10px;box-shadow:0 8px 20px #0008}
+.initCard.red{color:#a92727}.initCard.joker{background:linear-gradient(145deg,#292319,#dfca86,#3b3122);color:#17120c}
+.initCorner{font-size:23px;font-weight:bold;line-height:.9}.initBottom{position:absolute;right:10px;bottom:10px;transform:rotate(180deg)}
+.initSuit{position:absolute;inset:0;display:grid;place-items:center;font-size:48px}.initRows{margin-top:10px;border-top:1px solid #39414b}
+.initRow{display:flex;justify-content:space-between;padding:7px 3px;border-bottom:1px solid #292f37;font-size:12px}.initVal{font:700 15px Georgia,serif}.initRed{color:#d56b6b}.initRow.currentTurn{background:#403a29;outline:1px solid #d0b36f}.initTurnTag{color:#f0d37f;font-weight:bold;margin-left:6px}
+.initActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.initActions button:first-child{grid-column:1/-1}
+
+.tokenStateBadge{position:absolute;left:50%;bottom:-13px;transform:translateX(-50%);z-index:9;
+font:700 11px/1.2 Arial,sans-serif;white-space:nowrap;background:#101317e8;border:1px solid #69717b;
+border-radius:8px;padding:2px 5px;pointer-events:none;box-shadow:0 1px 4px #000}
+.tokenStateBadge .wound{color:#e28a8a}.tokenStateBadge .shaken{color:#e8d078}
+.mapImage{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:0;pointer-events:none}.mapImage.hidden{display:none}
+/* Combat system additions */
+.entity.activeTurnToken{outline:3px solid #f0d36d!important;box-shadow:0 0 0 3px #15120a,0 0 22px 7px #f0d36d99!important}
+.combatConditionBar{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.combatConditionBar button{font-size:11px;padding:5px 7px}
+.combatConditionBar button.on{background:#5b4d2b;border-color:#d0b36f;color:#ffe6a0}
+.initRow.heldTurn{border-left:3px solid #8ab4d8}
+#combatRoundBox{margin-top:8px;padding:7px;border:1px solid #414b57;border-radius:7px;background:#101317}
+#combatRoundBox b{color:#f0d37f}
+
+.tokenStatusOverlay{
+ position:absolute;z-index:12;pointer-events:none;transform:translate(-50%,0);
+ background:#11151aeF;border:1px solid #7b8490;border-radius:8px;
+ padding:3px 6px;font:700 11px/1.2 Arial,sans-serif;white-space:nowrap;
+ box-shadow:0 2px 5px #000a;color:#eee
+}
+.tokenStatusOverlay .wound{color:#ef8b8b}
+.tokenStatusOverlay .shaken{color:#f0d36d}
+
+.activeTurnRing{position:absolute;z-index:11;pointer-events:none;border:3px solid #f0d36d;
+border-radius:50%;box-shadow:0 0 18px #f0d36daa;box-sizing:border-box}
+
+.jokerOwner{box-shadow:inset 0 0 0 1px #d6b65b}
+.jokerTurn{border-left:4px solid #e4c65f!important}
+#jokerInterrupt{background:#5a1d28;border-color:#d67b88;font-weight:800}
+
+#initiativeRollBonus.positive{border-color:#648a61}
+#initiativeRollBonus.negative{border-color:#9b5555}
+.gridStepper{display:grid;grid-template-columns:34px minmax(0,1fr) 34px;gap:5px}
+.gridStepper input{text-align:center;min-width:0}
+#gridResizeMessage{margin-top:8px;color:#d8bf80}
+#conditionFloat{position:static!important;width:100%!important;margin-bottom:16px;padding:8px!important}
+.token.incapacitated{background:#000;color:#fff;border-color:#8a8a8a}
+button:disabled{opacity:.45;cursor:not-allowed}
+
+.top{flex-wrap:wrap;height:auto}#app{grid-template-rows:auto 1fr}
+#battleJournal{position:absolute;left:18px;bottom:18px;z-index:60;width:360px;max-width:calc(100% - 36px);max-height:65%;overflow:auto;background:#171c22;border:1px solid #647080;border-radius:10px;padding:12px}
+#battleJournal p{border-bottom:1px solid #39414b;padding-bottom:7px;font-size:12px;line-height:1.4}
+#gmNotes{width:100%;min-height:95px;background:#0f1318;color:#eee;border:1px solid #414b57;padding:8px;resize:vertical}
+#moveReadout{position:absolute;left:18px;top:18px;background:#171c22eF;padding:8px;border-radius:6px;pointer-events:none;z-index:40}
+dialog{background:#171c22;color:#eee;border:1px solid #647080;border-radius:12px;width:360px}dialog::backdrop{background:#000b}#nameForm button{margin-top:14px}
+</style>
+</head>
+<body>
+<dialog id="nameDialog"><form id="nameForm"><h3>Как вас зовут?</h3><p>Это имя увидят участники комнаты.</p><label for="joinName">Ваше имя</label><input id="joinName" type="text" maxlength="32" required autocomplete="nickname"><p id="nameError" class="hint" role="status"></p><button type="submit">Войти в комнату</button> <button id="cancelJoin" type="button">Отмена</button></form></dialog><div id="app">
+<header class="top">
+ <div class="brand">SAVAGE WORLDS · MAP FORGE v2</div>
+ <button id="undo">↶ Undo</button><button id="redo">↷ Redo</button>
+ <button id="save">Сохранить бой</button><button id="load">Загрузить</button><input id="file" type="file" accept=".json,application/json" hidden>
+ <button id="export">Экспорт PNG</button><button id="imageUploadBtn">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="initiativeToggle">🃏 Инициатива</button><button id="mpToggle">🌐 Multiplayer</button><button id="journalToggle">Журнал боя</button><label id="localRoleLabel" style="margin:0">Проверка роли <select id="localRole" style="width:auto"><option value="gm">GM</option><option value="player">Игрок</option></select></label><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
+</header>
+<div class="workspace">
+<aside class="left">
+ <div class="section"><h3>Инструменты</h3><div class="tools">
+  <button data-tool="select" class="active">↖ Выбор</button><button data-tool="pan">✥ Камера</button>
+  <button data-tool="wall">▰ Стена</button><button data-tool="door">▥ Дверь</button>
+  <button data-tool="token">● Токен</button><button data-tool="prop">■ Объект</button>
+  <button data-tool="fog">☁ Туман</button><button data-tool="erase">⌫ Ластик</button>
+  <button data-tool="measure">↔ Линейка</button><button data-tool="blast">◉ Blast</button>
+  <button data-tool="cone">◁ Cone</button>
+ </div></div>
+ <div class="section"><h3>Карта</h3>
+  <label for="cols">Ширина, клеток</label><div class="gridStepper"><button type="button" data-grid-axis="cols" data-grid-delta="-1" aria-label="Ширина: убрать клетку">−</button><input id="cols" type="number" min="1" max="100" step="1" value="30"><button type="button" data-grid-axis="cols" data-grid-delta="1" aria-label="Ширина: добавить клетку">+</button></div>
+  <label for="rows">Высота, клеток</label><div class="gridStepper"><button type="button" data-grid-axis="rows" data-grid-delta="-1" aria-label="Высота: убрать клетку">−</button><input id="rows" type="number" min="1" max="100" step="1" value="22"><button type="button" data-grid-axis="rows" data-grid-delta="1" aria-label="Высота: добавить клетку">+</button></div>
+  <label>Размер клетки, px</label><input id="cell" type="number" min="20" max="120" value="48">
+  <button id="resize" style="width:100%;margin-top:9px">Применить размер</button><p class="hint">−/+ сразу меняют сетку справа и снизу. Объекты остаются на месте. Фон обрезается без растяжения; расширение возвращает его края.</p><div id="gridResizeMessage" class="hint" role="status" aria-live="polite"></div>
+ </div>
+ <div class="section"><h3>Сетка</h3>
+  <label><input id="gridToggle" type="checkbox" checked> Показывать сетку</label>
+  <label><input id="snap" type="checkbox" checked> Привязка к сетке</label>
+ </div>
+ <div class="hint"><b>Как пользоваться:</b><br>1. Выбери «Токен», «Стена» и т.п.<br>2. Кликни по карте.<br>3. Переключись на «Выбор» и перетаскивай объект.<br><br>Колесо — масштаб. Средняя кнопка мыши — камера. Delete — удалить.</div>
+</aside>
+
+<main class="stage" id="stage"><div id="moveReadout" class="hidden"></div><section id="battleJournal" class="hidden"><button id="journalClose" style="float:right">Закрыть</button><h3>Журнал боя</h3><div id="journalEntries"></div></section>
+ <div class="world" id="world"><div class="map" id="map"><img id="mapImage" class="mapImage hidden" alt=""><div class="grid" id="grid"></div></div></div>
+ <div id="measureLine" class="measure hidden"></div><div id="measureLabel" class="measureLabel hidden"></div>
+
+
+ <div class="mpPanel hidden" id="mpPanel">
+  <h2>🌐 Общая игровая комната</h2>
+  <label>Твоё имя</label><input id="playerName" type="text" maxlength="32" placeholder="Введите имя">
+  <div class="mpLine">
+   <div><label>Код комнаты</label><input id="roomCode" type="text" placeholder="например KLEIN42"></div>
+   <button id="joinRoom">Войти</button>
+  </div>
+  <button id="createRoom" style="width:100%;margin-top:8px">Создать новую комнату</button>
+  <button id="copyInvite" style="width:100%;margin-top:8px" disabled>Скопировать приглашение</button>
+  <h3 style="margin-top:15px">Игроки в комнате</h3><div class="players" id="players">Не подключено.</div><div id="transferBox" class="hidden"><label for="nextGM">Передать роль GM</label><select id="nextGM"></select><button id="transferGM" style="width:100%;margin-top:7px">Передать роль выбранному игроку</button><p class="hint">После передачи вы станете игроком. Личные заметки GM останутся в вашем браузере.</p></div><p id="roomNotice" class="hint" role="status"></p>
+  <p class="hint">Карта, токены и броски кубов синхронизируются между участниками комнаты. Создатель комнаты становится GM.</p>
+ </div>
+
+ <div class="dicePanel hidden" id="dicePanel">
+  <h2>🎲 Savage Worlds — Кубы</h2>
+  <div class="diceRow">
+   <button class="dieBtn" data-die="4">d4</button><button class="dieBtn" data-die="6">d6</button>
+   <button class="dieBtn" data-die="8">d8</button><button class="dieBtn" data-die="10">d10</button>
+   <button class="dieBtn" data-die="12">d12</button><button class="dieBtn" data-die="20">d20</button>
+  </div>
+  <div class="diceOptions">
+   <div><label>Куб характеристики</label><select id="traitDie"><option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option></select></div>
+   <div><label>Ручной модификатор</label><input id="diceMod" type="number" value="0"></div>
+  </div>
+  <p id="diceInitiativeHint" class="hint" aria-live="polite">Нет активного хода · масть +0</p>
+  <label><input id="wildDie" type="checkbox" checked> Wild Die d6</label>
+  <label><input id="acing" type="checkbox" checked> Взрывающиеся кубы (Acing)</label>
+  <button id="traitRoll" style="width:100%;margin-top:8px">Бросок характеристики / навыка</button>
+  <div class="diceResult">
+   <div class="diceBig" id="diceBig">—</div>
+   <div class="diceSub" id="diceSub">Выбери куб или сделай Trait Roll</div>
+  </div>
+  <div class="diceHistory" id="diceHistory"></div>
+  <button id="clearDice" style="width:100%;margin-top:8px">Очистить историю</button>
+ </div>
+
+ 
+ <div class="initiativeDraft hidden" id="initiativeDraft">
+  <h2>🃏 Savage Worlds — Инициатива</h2>
+  <div class="initTop">
+   <div class="initDeck">SWADE</div>
+   <div class="initCard" id="initCard"><div class="initCorner" id="initA">—</div><div class="initSuit" id="initSuit">?</div><div class="initCorner initBottom" id="initB">—</div></div>
+  </div>
+  <div class="initActions">
+   <button id="initDraw">Вытянуть карту</button>
+   <button id="initNext">Другой игрок</button>
+   <button id="initReset">Новая колода</button><button id="initEndTurn" style="grid-column:1/-1">✓ Завершить ход</button>
+<button id="initHoldTurn" style="grid-column:1/-1">⏸ Удержать ход</button>
+<button id="jokerInterrupt" class="hidden" style="grid-column:1/-1">🃏 Перехватить инициативу</button>
+<div id="initiativeRollBonus" class="hidden" style="grid-column:1/-1;padding:6px;border:1px solid #7b5f2b;border-radius:7px">
+  Модификатор инициативы: <b id="initiativeRollBonusValue">0</b> ко всем броскам
+</div>
+<div id="jokerBonusHint" class="hidden" style="grid-column:1/-1;padding:6px;border:1px solid #7b5f2b;border-radius:7px">🃏 Джокер: <b>+2 ко всем броскам</b></div>
+<div id="combatRoundBox" style="grid-column:1/-1">
+  Раунд: <b id="combatRound">1</b>
+  <button id="initNewRound" type="button" style="float:right;padding:3px 7px">Новый раунд</button>
+  <div style="clear:both"></div>
+</div><button id="initNpcDeal" class="gmOnly" style="grid-column:1/-1">🎴 Раздать карты всем токенам</button>
+  </div>
+  <div class="gmOnly" style="margin-top:10px">
+      <label>Токены на карте</label>
+      <div id="initNpcTokens" class="hint" style="padding:7px;background:#0f1318;border:1px solid #414b57;border-radius:6px;max-height:120px;overflow:auto">Добавьте токены на карту.</div>
+     </div>
+     <div class="hint" id="initCount" style="margin-top:8px"></div>
+  <div class="initRows" id="initRows"></div>
+ </div>
+<div id="toast">Выбери инструмент слева и кликни по карте</div>
+</main>
+
+<aside class="right">
+ <div class="section"><h3>Выбранный объект</h3>
+  <div id="none" class="hint">Ничего не выбрано.</div>
+  <div id="props" class="hidden">
+   <label>Название</label><input id="pName" type="text">
+   <div class="row"><div><label>X</label><input id="pX" type="number"></div><div><label>Y</label><input id="pY" type="number"></div></div>
+   <div class="row"><div><label>Ширина</label><input id="pW" type="number"></div><div><label>Высота</label><input id="pH" type="number"></div></div>
+   <label>Поворот, °</label><input id="pR" type="number">
+   <div id="tokenExtras" class="hidden">
+ <label>Фишки</label><div style="display:flex;gap:10px;align-items:center"><button id="bennyMinus" type="button" aria-label="Потратить фишку">−</button><b id="bennyCount">0</b><button id="bennyPlus" type="button" aria-label="Добавить фишку">+</button></div><p class="hint">Игрок тратит фишки. GM добавляет и убавляет.</p>
+ <p id="tokenMovement" class="hint"></p><div id="gmNotesBox"><label for="gmNotes">Заметки GM</label><textarea id="gmNotes" placeholder="Броня, защита, оружие, особенности…"></textarea><p class="hint">Заметки хранятся у GM и не отправляются в комнату.</p></div></div>
+ <button id="duplicateToken" type="button" style="width:100%;margin-top:10px">Дублировать токен</button><div id="duplicateHint" class="hint" role="status"></div>
+   <button id="delete" style="width:100%;margin-top:10px">Удалить</button>
+  </div>
+ </div>
+<div id="conditionFloat" class="hidden" style="position:absolute;right:18px;top:18px;z-index:100;width:230px;background:#171b20f2;border:2px solid #8b7954;border-radius:10px;padding:12px;box-shadow:0 6px 24px #000b">
+ <div style="font:700 17px Georgia,serif;margin-bottom:3px">❤️ Состояние токена</div>
+ <div id="conditionTokenName" style="color:#b9b1a3;margin-bottom:10px">—</div>
+ <div style="display:grid;grid-template-columns:1fr 34px 34px 34px;gap:6px;align-items:center">
+  <span>Ранения</span><button id="floatWoundMinus" type="button">−</button><b id="floatWoundValue" style="text-align:center">0</b><button id="floatWoundPlus" type="button">+</button>
+ </div>
+ <button id="floatShaken" type="button" style="width:100%;margin-top:9px">○ Нет шока</button>
+ <div class="combatConditionBar" id="extraConditions">
+   <button type="button" data-cond="dead" aria-pressed="false">☠ Убит</button>
+   <button type="button" data-cond="unconscious" aria-pressed="false">Без сознания</button>
+   <button type="button" data-cond="fatigued">Усталость</button>
+   <button type="button" data-cond="prone">Сбит с ног</button>
+   <button type="button" data-cond="bound">Связан</button>
+   <button type="button" data-cond="distracted">Отвлечён</button>
+   <button type="button" data-cond="vulnerable">Уязвим</button>
+   <button type="button" data-cond="stunned">Оглушён</button>
+ </div>
+</div>
+ <div class="section"><h3>SWADE</h3>
+  <label>Размер Blast</label><select id="blastSize"><option value="1">Small</option><option value="2" selected>Medium</option><option value="3">Large</option></select>
+  <p class="hint">Blast и Cone размещаются поверх карты как шаблоны области.</p>
+ </div>
+</aside>
+</div>
+</div>
+<script>
+"use strict";
+const $=q=>document.querySelector(q);
+const stage=$("#stage"),world=$("#world"),map=$("#map"),grid=$("#grid");
+let gmNotes={},holdingMovement=false;
+let state={cols:30,rows:22,cell:48,items:[],mapImage:null};
+let tool="select",selected=null,zoom=1,panX=35,panY=35,drag=null,history=[],future=[];
+
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const snap=v=>$("#snap").checked?Math.round(v/state.cell)*state.cell:v;
+const current=()=>state.items.find(i=>i.id===selected);
+
+function gmAccess(){return window.networkRoleActive?window.networkIsGM:$("#localRole").value==="gm"}
+function journal(text){
+ if(applyingRemote)return;
+ if(!Array.isArray(state.battleLog))state.battleLog=[];
+ state.battleLog.push({time:new Date().toISOString(),round:combatRound,text:String(text),actor:gmAccess()?"GM":($("#playerName").value||"Игрок")});
+ renderJournal();saveBattleLocal();broadcastState();
+}
+function renderJournal(){
+ const host=$("#journalEntries");host.replaceChildren();
+ for(const row of (state.battleLog||[]).slice().reverse()){
+   const p=document.createElement("p");p.textContent=`${new Date(row.time).toLocaleTimeString()} · Раунд ${row.round} · ${row.actor}: ${row.text}`;host.appendChild(p);
+ }
+ if(!host.children.length)host.textContent="Событий пока нет.";
+}
+function refreshExtras(){
+ const t=current(),token=t?.type==="token";$("#tokenExtras").classList.toggle("hidden",!token);
+ if(!token)return;
+ const gm=gmAccess(),count=Math.max(0,Math.floor(Number(t.bennies)||0));
+ $("#bennyCount").textContent=count;$("#bennyPlus").disabled=!gm;$("#bennyMinus").disabled=count===0||(window.networkRoleActive&&!gm&&!roomPlayers.some(p=>p.id===myClientId&&p.tokenId===t.id));
+ $("#gmNotesBox").classList.toggle("hidden",!gm);
+ if(document.activeElement!==$("#gmNotes"))$("#gmNotes").value=gm?(gmNotes[t.id]||""):"";
+ $("#tokenMovement").textContent=`Пройдено за ход: ${(Number(t.movedCells)||0).toFixed(1)} клет.`;
+}
+function changeBenny(delta){
+ if(socket?.readyState===1){const t=selectedToken();if(t)socket.send(JSON.stringify({type:"benny",tokenId:t.id,delta}));return !!t}
+ const t=selectedToken();if(!t||![1,-1].includes(delta)||(delta>0&&!gmAccess()))return false;
+ const count=Math.max(0,Math.floor(Number(t.bennies)||0));if(count+delta<0)return false;
+ t.bennies=count+delta;render();journal(`${t.name||"Токен"}: фишки ${delta>0?"+1":"−1"} (${count} → ${t.bennies})`);return true;
+}
+function remember(){history.push(JSON.stringify(state));if(history.length>80)history.shift();future=[]}
+function syncInputs(){$("#cols").value=state.cols;$("#rows").value=state.rows;$("#cell").value=state.cell}
+function render(){
+ const __mapImg=document.querySelector("#mapImage");
+ if(__mapImg){
+ const iw=state.mapImageWidth||state.cols*state.cell,ih=state.mapImageHeight||state.rows*state.cell;
+ __mapImg.style.width=iw+"px";__mapImg.style.height=ih+"px";
+ __mapImg.style.clipPath=`inset(0px ${Math.max(0,iw-state.cols*state.cell)}px ${Math.max(0,ih-state.rows*state.cell)}px 0px)`;
+ if(state.mapImage){__mapImg.src=state.mapImage;__mapImg.classList.remove("hidden")}else{__mapImg.removeAttribute("src");__mapImg.classList.add("hidden")}}
+
+ map.style.width=(state.cols*state.cell)+"px"; map.style.height=(state.rows*state.cell)+"px";
+ grid.style.backgroundSize=state.cell+"px "+state.cell+"px"; grid.style.display=$("#gridToggle").checked?"block":"none";
+ world.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;
+ map.querySelectorAll(".entity").forEach(e=>e.remove());
+ for(const it of state.items){
+   const e=document.createElement("div"); e.className="entity "+it.type+(it.id===selected?" selected":"");
+   if(it.type==="token"&&(it.conditions?.dead||it.conditions?.unconscious))e.classList.add("incapacitated");
+   e.dataset.id=it.id; e.style.left=it.x+"px";e.style.top=it.y+"px";e.style.width=it.w+"px";e.style.height=it.h+"px";e.style.transform=`rotate(${it.r||0}deg)`;
+   if(it.type==="token")e.textContent=it.name||"PC"; if(it.type==="prop")e.textContent=it.name||"OBJ";
+   map.appendChild(e);
+ }
+ updateProps(); $("#status").textContent=Math.round(zoom*100)+"%";
+}
+function updateProps(){
+ refreshExtras();
+ const it=current(),has=!!it; $("#none").classList.toggle("hidden",has);$("#props").classList.toggle("hidden",!has);
+ $("#duplicateToken").classList.toggle("hidden",!it||it.type!=="token");
+ if(!it)return; $("#pName").value=it.name||"";$("#pX").value=Math.round(it.x);$("#pY").value=Math.round(it.y);$("#pW").value=Math.round(it.w);$("#pH").value=Math.round(it.h);$("#pR").value=it.r||0;
+}
+function local(ev){const r=stage.getBoundingClientRect();return{x:(ev.clientX-r.left-panX)/zoom,y:(ev.clientY-r.top-panY)/zoom}}
+function add(type,x,y){
+ remember();const c=state.cell;let w=c,h=c,name="";
+ if(type==="wall"){w=c*3;h=Math.max(8,c*.18)}
+ if(type==="door"){w=c;h=Math.max(10,c*.22)}
+ if(type==="fog"){w=c*4;h=c*3}
+ if(type==="blast"){const n=Number($("#blastSize").value);w=h=c*n*2}
+ if(type==="cone"){w=c*4;h=c*3}
+ if(type==="token")name="PC";
+ const it={id:uid(),type,x:snap(x-w/2),y:snap(y-h/2),w,h,r:0,name};state.items.push(it);selected=it.id;render();
+}
+map.addEventListener("pointerdown",ev=>{
+ ev.preventDefault();const p=local(ev),hit=ev.target.closest(".entity");
+ if(tool==="pan"||ev.button===1){drag={kind:"pan",sx:ev.clientX,sy:ev.clientY,px:panX,py:panY};stage.setPointerCapture?.(ev.pointerId);return}
+ if(tool==="erase"){if(window.networkRoleActive&&!isGM)return;if(hit){remember();state.items=state.items.filter(i=>i.id!==hit.dataset.id);selected=null;render()}return}
+ if(tool==="measure"){drag={kind:"measure",start:p};showMeasure(p,p);return}
+ if(tool==="select"){
+   if(!hit){selected=null;render();return}
+   selected=hit.dataset.id;const it=current();if(window.networkRoleActive&&!isGM&&!roomPlayers.some(p=>p.id===myClientId&&p.tokenId===it.id&&p.isTurn)){render();return}remember();drag={kind:"item",it,dx:p.x-it.x,dy:p.y-it.y,path:0,lastX:it.x,lastY:it.y};render();return;
+ }
+ if(window.networkRoleActive&&!isGM)return;add(tool,p.x,p.y);
+});
+window.addEventListener("pointermove",ev=>{
+ if(!drag)return;
+ if(drag.kind==="pan"){panX=drag.px+(ev.clientX-drag.sx);panY=drag.py+(ev.clientY-drag.sy);render()}
+ if(drag.kind==="item"){const p=local(ev);drag.it.x=snap(p.x-drag.dx);drag.it.y=snap(p.y-drag.dy);
+ if(drag.it.type==="token"){
+ drag.path+=Math.hypot(drag.it.x-drag.lastX,drag.it.y-drag.lastY)/state.cell;drag.lastX=drag.it.x;drag.lastY=drag.it.y;
+ $("#moveReadout").classList.remove("hidden");$("#moveReadout").textContent=`${drag.it.name||"Токен"}: ${((Number(drag.it.movedCells)||0)+drag.path).toFixed(1)} клет. за ход`;
+ }render()}
+ if(drag.kind==="measure")showMeasure(drag.start,local(ev));
+});
+window.addEventListener("pointerup",()=>{
+ if(drag&&drag.kind==="measure"){$("#measureLine").classList.add("hidden");$("#measureLabel").classList.add("hidden")}
+ if(drag?.kind==="item"&&drag.it.type==="token"&&drag.path>0){drag.it.movedCells=(Number(drag.it.movedCells)||0)+drag.path;journal(`${drag.it.name||"Токен"}: перемещение ${drag.path.toFixed(1)} клет., за ход ${drag.it.movedCells.toFixed(1)}`);render()}
+ if(drag?.kind==="item"&&window.networkRoleActive&&!isGM&&socket?.readyState===1)socket.send(JSON.stringify({type:"moveToken",tokenId:drag.it.id,x:drag.it.x,y:drag.it.y}));$("#moveReadout").classList.add("hidden");drag=null;
+});
+function showMeasure(a,b){
+ const ax=a.x*zoom+panX,ay=a.y*zoom+panY,bx=b.x*zoom+panX,by=b.y*zoom+panY,dx=bx-ax,dy=by-ay,d=Math.hypot(dx,dy);
+ const line=$("#measureLine"),lab=$("#measureLabel");line.classList.remove("hidden");lab.classList.remove("hidden");
+ line.style.left=ax+"px";line.style.top=ay+"px";line.style.width=d+"px";line.style.transform=`rotate(${Math.atan2(dy,dx)*180/Math.PI}deg)`;
+ lab.style.left=(bx+8)+"px";lab.style.top=(by+8)+"px";lab.textContent=(Math.hypot(b.x-a.x,b.y-a.y)/state.cell).toFixed(1)+" клет.";
+}
+stage.addEventListener("wheel",ev=>{
+ ev.preventDefault();const old=zoom,r=stage.getBoundingClientRect(),mx=ev.clientX-r.left,my=ev.clientY-r.top;
+ zoom=Math.max(.25,Math.min(3,zoom*(ev.deltaY<0?1.12:.89)));panX=mx-(mx-panX)*(zoom/old);panY=my-(my-panY)*(zoom/old);render();
+},{passive:false});
+document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>{
+ tool=b.dataset.tool;document.querySelectorAll("[data-tool]").forEach(x=>x.classList.toggle("active",x===b));stage.style.cursor=tool==="pan"?"grab":tool==="select"?"default":"crosshair";
+}));
+$("#gridToggle").addEventListener("change",render);
+function resizeMap(cols,rows,cell){
+ const message=$("#gridResizeMessage");
+ if(socket&&socket.readyState===1&&!isGM){message.textContent="Размер карты может менять только GM.";syncInputs();return false}
+ if(!Number.isInteger(cols)||!Number.isInteger(rows)||cols<1||rows<1||cols>100||rows>100||!Number.isInteger(cell)||cell<20||cell>120){
+   message.textContent="Введите целое число: 1–100 клеток, размер клетки 20–120 px.";syncInputs();return false;
+ }
+ const width=cols*cell,height=rows*cell;
+ const blocked=state.items.some(it=>{
+   const a=(Number(it.r)||0)*Math.PI/180;
+   const w=Number(it.w),h=Number(it.h);
+   const right=Number(it.x)+w/2+(Math.abs(w*Math.cos(a))+Math.abs(h*Math.sin(a)))/2;
+   const bottom=Number(it.y)+h/2+(Math.abs(w*Math.sin(a))+Math.abs(h*Math.cos(a)))/2;
+   return (width<state.cols*state.cell&&right>width+0.001)||(height<state.rows*state.cell&&bottom>height+0.001);
+ });
+ if(blocked){message.textContent="У края есть объекты. Переместите их внутрь карты перед уменьшением.";syncInputs();return false}
+ if(cols===state.cols&&rows===state.rows&&cell===state.cell){syncInputs();return true}
+ remember();
+ if(state.mapImage){
+   state.mapImageWidth=state.mapImageWidth||state.cols*state.cell;
+   state.mapImageHeight=state.mapImageHeight||state.rows*state.cell;
+ }
+ state.cols=cols;state.rows=rows;state.cell=cell;
+ syncInputs();render();saveBattleLocal();
+ message.textContent=`Сетка: ${cols} × ${rows}. Изменение можно отменить кнопкой Undo.`;
+ return true;
+}
+$("#resize").addEventListener("click",()=>resizeMap(Number($("#cols").value),Number($("#rows").value),Number($("#cell").value)));
+document.querySelectorAll("[data-grid-axis]").forEach(button=>button.addEventListener("click",()=>{
+ const axis=button.dataset.gridAxis,delta=Number(button.dataset.gridDelta);
+ resizeMap(state.cols+(axis==="cols"?delta:0),state.rows+(axis==="rows"?delta:0),state.cell);
+}));
+["pName","pX","pY","pW","pH","pR"].forEach(id=>$("#"+id).addEventListener("change",()=>{
+ const it=current();if(!it||window.networkRoleActive&&!isGM)return;remember();it.name=$("#pName").value;it.x=Number($("#pX").value)||0;it.y=Number($("#pY").value)||0;it.w=Math.max(4,Number($("#pW").value)||4);it.h=Math.max(4,Number($("#pH").value)||4);it.r=Number($("#pR").value)||0;render();
+}));
+function duplicateToken(){
+ if(!gmAccess())return;
+ const source=current();if(!source||source.type!=="token")return;
+ const hint=$("#duplicateHint");
+ if(socket&&socket.readyState===1&&!isGM){hint.textContent="Дублирование доступно GM.";return}
+ const candidates=[];
+ for(let y=0;y+source.h<=state.rows*state.cell;y+=state.cell){
+   for(let x=0;x+source.w<=state.cols*state.cell;x+=state.cell){
+     if(!state.items.some(it=>x<it.x+it.w&&x+source.w>it.x&&y<it.y+it.h&&y+source.h>it.y))candidates.push({x,y});
+   }
+ }
+ candidates.sort((a,b)=>Math.hypot(a.x-source.x,a.y-source.y)-Math.hypot(b.x-source.x,b.y-source.y));
+ if(!candidates.length){hint.textContent="Нет свободного места. Расширьте сетку.";return}
+ const base=(source.name||"PC").replace(/\s+\d+$/,"");
+ const names=new Set(state.items.filter(it=>it.type==="token").map(it=>it.name));
+ let n=2;while(names.has(base+" "+n))n++;
+ remember();const copy=JSON.parse(JSON.stringify(source));
+ copy.id=uid();copy.bennies=0;copy.movedCells=0;copy.name=base+" "+n;Object.assign(copy,candidates[0]);
+ state.items.push(copy);selected=copy.id;render();saveBattleLocal();
+ hint.textContent="Копия создана. Состояния скопированы; карта инициативы выдаётся отдельно.";
+}
+$("#duplicateToken").addEventListener("click",duplicateToken);
+function del(){if(window.networkRoleActive&&!isGM)return;if(!selected)return;remember();state.items=state.items.filter(i=>i.id!==selected);selected=null;render()}
+$("#delete").addEventListener("click",del);
+window.addEventListener("keydown",ev=>{if(ev.key==="Delete"&&!["INPUT","TEXTAREA"].includes(document.activeElement.tagName))del()});
+$("#undo").addEventListener("click",()=>{if(!gmAccess()||!history.length)return;future.push(JSON.stringify(state));const retainedLog=state.battleLog,retainedBennies=new Map(state.items.map(t=>[t.id,t.bennies]));state=JSON.parse(history.pop());state.battleLog=retainedLog;for(const t of state.items){if(retainedBennies.has(t.id))t.bennies=retainedBennies.get(t.id)}journal("Отмена изменения карты");selected=null;syncInputs();render()});
+$("#redo").addEventListener("click",()=>{if(!gmAccess()||!future.length)return;history.push(JSON.stringify(state));const retainedLog=state.battleLog,retainedBennies=new Map(state.items.map(t=>[t.id,t.bennies]));state=JSON.parse(future.pop());state.battleLog=retainedLog;for(const t of state.items){if(retainedBennies.has(t.id))t.bennies=retainedBennies.get(t.id)}journal("Повтор изменения карты");selected=null;syncInputs();render()});
+$("#save").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(battleSnapshot(),null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="swade-battle.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$("#load").addEventListener("click",()=>$("#file").click());
+$("#file").addEventListener("change",async ev=>{
+ const f=ev.target.files[0];if(!f||!gmAccess())return;
+ try{restoreBattle(JSON.parse(await f.text()));saveBattleLocal()}
+ catch(e){alert("Файл боя повреждён или имеет неверный формат. Текущий бой сохранён.")}
+ finally{ev.target.value=""}
+});
+$("#export").addEventListener("click",()=>{
+ const c=document.createElement("canvas");c.width=state.cols*state.cell;c.height=state.rows*state.cell;const x=c.getContext("2d");
+ x.fillStyle="#2a2d2c";x.fillRect(0,0,c.width,c.height);
+ if($("#gridToggle").checked){x.strokeStyle="rgba(240,240,230,.18)";x.lineWidth=1;for(let i=0;i<=state.cols;i++){x.beginPath();x.moveTo(i*state.cell,0);x.lineTo(i*state.cell,c.height);x.stroke()}for(let j=0;j<=state.rows;j++){x.beginPath();x.moveTo(0,j*state.cell);x.lineTo(c.width,j*state.cell);x.stroke()}}
+ for(const it of state.items){x.save();x.translate(it.x+it.w/2,it.y+it.h/2);x.rotate((it.r||0)*Math.PI/180);
+   if(it.type==="token"){x.fillStyle=(it.conditions?.dead||it.conditions?.unconscious)?"#000":"#53616e";x.strokeStyle="#ddd6c9";x.lineWidth=3;x.beginPath();x.arc(0,0,Math.min(it.w,it.h)/2,0,Math.PI*2);x.fill();x.stroke()}
+   else if(it.type==="cone"){x.fillStyle="rgba(225,105,38,.35)";x.beginPath();x.moveTo(-it.w/2,0);x.lineTo(it.w/2,-it.h/2);x.lineTo(it.w/2,it.h/2);x.closePath();x.fill()}
+   else {x.fillStyle=it.type==="wall"?"#121417":it.type==="door"?"#6b452c":it.type==="fog"?"rgba(3,4,5,.88)":it.type==="blast"?"rgba(225,105,38,.28)":"#594936";if(it.type==="blast"){x.beginPath();x.ellipse(0,0,it.w/2,it.h/2,0,0,Math.PI*2);x.fill()}else x.fillRect(-it.w/2,-it.h/2,it.w,it.h)}
+   x.restore();
+ }
+ const a=document.createElement("a");a.href=c.toDataURL("image/png");a.download="swade-map.png";a.click();
+});
+setTimeout(()=>$("#toast").classList.add("hidden"),3500);
+render();
+
+// ---- Savage Worlds dice roller ----
+const dicePanel=$("#dicePanel"), diceBig=$("#diceBig"), diceSub=$("#diceSub"), diceHistory=$("#diceHistory");
+$("#diceToggle").addEventListener("click",()=>dicePanel.classList.toggle("hidden"));
+
+function rollOne(sides, ace){
+ let total=0, rolls=[], r;
+ do { r=1+Math.floor(Math.random()*sides); rolls.push(r); total+=r; } while(ace && r===sides);
+ return {total,rolls,sides};
+}
+function rollText(r){return "d"+r.sides+": "+r.rolls.join(" + ")+" = "+r.total}
+function outcome(total){
+ if(total<4)return {text:"Провал",cls:"fail"};
+ const raises=Math.floor((total-4)/4);
+ return raises ? {text:"Успех + подъёмов: "+raises,cls:"raise"} : {text:"Успех",cls:"success"};
+}
+function addHist(title, detail, cls=""){
+ const d=document.createElement("div"); d.className="hist "+cls;
+ d.innerHTML="<b>"+title+"</b><br>"+detail; diceHistory.prepend(d);
+ while(diceHistory.children.length>20)diceHistory.lastChild.remove();
+}
+document.querySelectorAll(".dieBtn").forEach(b=>b.addEventListener("click",()=>{
+ const sides=Number(b.dataset.die),ace=$("#acing").checked,r=rollOne(sides,ace),mod=diceModifier(),total=r.total+mod;
+ diceBig.textContent=total; diceSub.textContent=rollText(r)+(mod?` ${mod>=0?"+":""}${mod}`:"");
+ diceSub.textContent+=" | "+diceModifierDetail();
+ addHist("Обычный бросок: "+total,escapeHtml(diceSub.textContent));
+}));
+$("#traitRoll").addEventListener("click",()=>{
+ const sides=Number($("#traitDie").value),mod=diceModifier(),ace=$("#acing").checked;
+ const trait=rollOne(sides,ace),useWild=$("#wildDie").checked,wild=useWild?rollOne(6,ace):null;
+ const traitTotal=trait.total+mod,wildTotal=wild?wild.total+mod:-Infinity,total=Math.max(traitTotal,wildTotal);
+ const oc=outcome(total);
+ diceBig.textContent=total;
+ let detail=rollText(trait)+(mod?` ${mod>=0?"+":""}${mod}`:"");
+ if(wild)detail+=" | Wild "+rollText(wild)+(mod?` ${mod>=0?"+":""}${mod}`:"");
+ detail+=" → "+oc.text+" | "+diceModifierDetail();
+ diceSub.textContent=detail;
+ addHist("Trait Roll: "+total,escapeHtml(detail),oc.cls);
+});
+$("#clearDice").addEventListener("click",()=>{diceHistory.innerHTML="";diceBig.textContent="—";diceSub.textContent="История очищена"});
+
+
+// ---- Multiplayer client ----
+const mpPanel=$("#mpPanel"), netState=$("#netState"), playersBox=$("#players");
+let socket=null, room="", myClientId="", isGM=false, applyingRemote=false, syncTimer=null;
+
+$("#mpToggle").addEventListener("click",()=>mpPanel.classList.toggle("hidden"));
+
+function makeRoomCode(){
+ const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s="";
+ for(let i=0;i<6;i++)s+=chars[Math.floor(Math.random()*chars.length)];
+ return s;
+}
+function applyRoomBattle(){
+ const d=state.battleSession;if(!d)return;
+ initDeck=d.initDeck||[];initDrawn=d.initDrawn||[];initNameIndex=d.initNameIndex||0;initTurnIndex=d.initTurnIndex??-1;combatRound=d.combatRound||1;heldTurns=d.heldTurns||[];interruptedTurnStack=d.interruptedTurnStack||[];jokerUsed=d.jokerUsed||[];
+ initRenderRows();initStatus();initShow(initCurrent()?.card||null);
+}
+let roomPlayers=[],pendingRoom="";
+function requestRoom(code){
+ code=String(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
+ if(!code){$("#roomNotice").textContent="Введите код комнаты.";return}
+ pendingRoom=code;$("#joinName").value=$("#playerName").value.trim();$("#nameError").textContent="";$("#nameDialog").showModal();$("#joinName").focus();
+}
+$("#nameForm").addEventListener("submit",e=>{e.preventDefault();const name=$("#joinName").value.trim();if(!name){$("#nameError").textContent="Введите имя.";return}$("#playerName").value=name;$("#nameDialog").close();connectRoom(pendingRoom)});
+$("#cancelJoin").addEventListener("click",()=>$("#nameDialog").close());
+$("#transferGM").addEventListener("click",()=>{if(!isGM||socket?.readyState!==1)return;const targetId=$("#nextGM").value;if(targetId)socket.send(JSON.stringify({type:"transferGM",targetId}))});
+function renderPlayers(list){
+ roomPlayers=list;
+ const me=list.find(p=>p.id===myClientId);isGM=!!me?.isGM;window.networkIsGM=isGM;refreshRole();
+ netState.textContent=`Комната ${room}${isGM?" · GM":" · Игрок"}`;
+ playersBox.replaceChildren();for(const p of list){const row=document.createElement("div");row.textContent=`● ${p.name}${p.id===myClientId?" (вы)":""} — ${p.isGM?"GM":"Игрок"}`;playersBox.appendChild(row);
+ if(isGM){const sel=document.createElement("select");sel.add(new Option("Без токена",""));for(const t of state.items.filter(t=>t.type==="token"))sel.add(new Option(t.name||"Токен",t.id));sel.value=p.tokenId||"";sel.setAttribute("aria-label","Токен: "+p.name);sel.onchange=()=>socket.send(JSON.stringify({type:"assignToken",clientId:p.id,tokenId:sel.value}));row.appendChild(sel)}
+ }
+ $("#nextGM").replaceChildren();for(const p of list.filter(p=>p.id!==myClientId)){const option=document.createElement("option");option.value=p.id;option.textContent=p.name;$("#nextGM").appendChild(option)}
+ $("#transferBox").classList.toggle("hidden",!isGM);$("#transferGM").disabled=!$("#nextGM").options.length;
+}
+function connectRoom(code){
+ if(location.protocol==="file:"){$("#roomNotice").textContent="Для комнаты откройте HTML через сервер из комплекта. Локальный файл доступен для одиночной проверки.";return}
+ if(!$("#playerName").value.trim())return requestRoom(code);
+ code=(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
+ if(!code)return alert("Введите код комнаты.");
+ room=code; $("#roomCode").value=room;
+ if(socket){socket.onclose=null;socket.onmessage=null;socket.close()}
+ const proto=location.protocol==="https:"?"wss":"ws";
+ socket=new WebSocket(`${proto}://${location.host}/ws`);
+ netState.textContent="Подключение…";
+ socket.onopen=()=>{
+   socket.send(JSON.stringify({type:"join",room,name:$("#playerName").value.trim()||"Игрок"}));
+ };
+ socket.onmessage=ev=>{
+   let msg; try{msg=JSON.parse(ev.data)}catch{return}
+   if(msg.type==="welcome"){
+     myClientId=msg.clientId;isGM=!!msg.isGM;window.networkRoleActive=true;window.networkIsGM=isGM;refreshRole();netState.textContent=`Комната ${room}${isGM?" · GM":""}`;
+     $("#copyInvite").disabled=false;
+     if(!msg.state&&isGM)broadcastState();if(msg.state){applyingRemote=true;state=msg.state;applyRoomBattle();syncInputs();render();applyingRemote=false}
+   } else if(msg.type==="state" && msg.clientId!==myClientId){
+     applyingRemote=true;state=msg.state;applyRoomBattle();syncInputs();render();applyingRemote=false;
+   } else if(msg.type==="players"){
+     renderPlayers(msg.players);
+   } else if(msg.type==="tokenMoved"){const t=state.items.find(t=>t.id===msg.tokenId);if(t){applyingRemote=true;t.x=msg.x;t.y=msg.y;render();applyingRemote=false}
+   } else if(msg.type==="gmTransferred"){ $("#roomNotice").textContent="Новый GM: "+msg.name;
+   } else if(msg.type==="dice" && msg.clientId!==myClientId){
+     dicePanel.classList.remove("hidden");diceBig.textContent=msg.total;diceSub.textContent=msg.detail;
+     applyingRemote=true;addHist(escapeHtml(msg.name)+" — "+escapeHtml(msg.title),escapeHtml(msg.detail),msg.cls||"");applyingRemote=false;
+   } else if(msg.type==="error"){alert(msg.message)}
+ };
+ socket.onclose=()=>{refreshRole();netState.textContent="Офлайн";playersBox.textContent="Соединение закрыто.";$("#transferBox").classList.add("hidden");$("#copyInvite").disabled=true;};
+ socket.onerror=()=>{netState.textContent="Ошибка сети"};
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function broadcastState(){
+ if(applyingRemote||!socket||socket.readyState!==1||!room||!isGM)return;
+ clearTimeout(syncTimer);syncTimer=setTimeout(()=>{if(!isGM||socket.readyState!==1)return;const owner=roomPlayers.find(p=>p.tokenId===initCurrent()?.tokenId);socket.send(JSON.stringify({type:"setTurn",clientId:owner?.id||null}));state.battleSession={initDeck,initDrawn,initNameIndex,initTurnIndex,combatRound,heldTurns,interruptedTurnStack,jokerUsed};socket.send(JSON.stringify({type:"state",room,state}));},45);
+}
+function broadcastDice(title,total,detail,cls=""){
+ if(socket&&socket.readyState===1&&room)socket.send(JSON.stringify({type:"dice",room,title,total,detail,cls}));
+}
+$("#createRoom").addEventListener("click",()=>requestRoom(makeRoomCode()));
+$("#joinRoom").addEventListener("click",()=>requestRoom($("#roomCode").value));
+$("#copyInvite").addEventListener("click",async()=>{
+ const u=new URL(location.href);u.searchParams.set("room",room);
+ try{await navigator.clipboard.writeText(u.toString());$("#copyInvite").textContent="Ссылка скопирована";setTimeout(()=>$("#copyInvite").textContent="Скопировать приглашение",1500)}
+ catch{prompt("Скопируйте ссылку:",u.toString())}
+});
+
+// Hook state-changing render calls into network synchronization.
+function refreshRole(){
+ $("#localRoleLabel").classList.toggle("hidden",!!window.networkRoleActive);
+ for(const id of ["undo","redo","load","save","duplicateToken"])$("#"+id).disabled=!gmAccess();
+ refreshExtras();
+}
+$("#localRole").addEventListener("change",refreshRole);
+$("#bennyMinus").addEventListener("click",()=>changeBenny(-1));
+$("#bennyPlus").addEventListener("click",()=>changeBenny(1));
+$("#gmNotes").addEventListener("change",()=>{const t=selectedToken();if(!t||!gmAccess())return;gmNotes[t.id]=$("#gmNotes").value;saveBattleLocal()});
+$("#journalToggle").addEventListener("click",()=>{$("#battleJournal").classList.toggle("hidden");renderJournal()});
+$("#journalClose").addEventListener("click",()=>$("#battleJournal").classList.add("hidden"));
+const originalRender=render;
+render=function(){
+ originalRender();refreshRole();renderJournal();broadcastState();
+ if(typeof initRefreshNpcTokens==="function")initRefreshNpcTokens();
+ if(typeof refreshTokenConditions==="function")refreshTokenConditions();
+ if(typeof renderTokenConditionBadges==="function")renderTokenConditionBadges();
+ if(typeof combatRefreshActiveToken==="function")combatRefreshActiveToken();refreshJokerControls();
+};
+
+// Broadcast dice rolls by wrapping history insertion.
+const originalAddHist=addHist;
+addHist=function(title,detail,cls=""){originalAddHist(title,detail,cls);if(!applyingRemote){const total=diceBig.textContent;const plain=document.createElement("div");plain.innerHTML=title+" · "+detail;journal("Бросок: "+plain.textContent);broadcastDice(title,total,detail,cls)}};
+
+const roomFromUrl=new URL(location.href).searchParams.get("room");
+if(roomFromUrl){$("#roomCode").value=roomFromUrl.toUpperCase();mpPanel.classList.remove("hidden");setTimeout(()=>requestRoom(roomFromUrl),0)}
+
+
+// ---- Initiative draft: local-only prototype ----
+const initiativeDraft=$("#initiativeDraft");
+$("#initiativeToggle").addEventListener("click",()=>{initiativeDraft.classList.toggle("hidden");initRefreshNpcTokens()});
+const initNames=["Игрок 1","Игрок 2","Игрок 3","Игрок 4"];
+const initSuits=["♠","♥","♦","♣"],initRanks=["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+function selectedToken(){
+ return (state.items||[]).find(x=>x.id===selected&&x.type==="token")||null;
+}
+function normalizeTokenCondition(t){
+ if(!t)return;
+ if(!Number.isFinite(Number(t.wounds)))t.wounds=0;
+ t.wounds=Math.max(0,Math.min(3,Number(t.wounds)||0));
+ t.shaken=!!t.shaken;
+ if(!t.conditions||typeof t.conditions!=="object")t.conditions={};
+ for(const k of ["fatigued","prone","bound","distracted","vulnerable","stunned","dead","unconscious"])t.conditions[k]=!!t.conditions[k];
+}
+function refreshTokenConditions(){
+ const panel=document.querySelector("#tokenConditions"),fp=document.querySelector("#conditionFloat"),t=selectedToken();
+ if(!t){
+   if(panel)panel.classList.add("hidden");
+   if(fp)fp.classList.add("hidden");
+   return;
+ }
+ normalizeTokenCondition(t);
+ if(panel){
+   panel.classList.remove("hidden");
+   const w=document.querySelector("#woundValue");if(w)w.textContent=t.wounds;
+   const b=document.querySelector("#shakenToggle");if(b){b.textContent=t.shaken?"⚡ В шоке":"○ Нет шока";b.setAttribute("aria-pressed",String(t.shaken))}
+ }
+ if(fp){
+   fp.classList.remove("hidden");
+   document.querySelector("#conditionTokenName").textContent=t.name||"Токен";
+   document.querySelector("#floatWoundValue").textContent=t.wounds;
+   document.querySelector("#floatShaken").textContent=t.shaken?"⚡ В шоке":"○ Нет шока";
+   document.querySelectorAll("#extraConditions [data-cond]").forEach(b=>{b.classList.toggle("on",!!t.conditions[b.dataset.cond]);b.setAttribute("aria-pressed",String(!!t.conditions[b.dataset.cond]))});
+ }
+}
+function renderTokenConditionBadges(){
+ document.querySelectorAll(".tokenStatusOverlay").forEach(x=>x.remove());
+ const host=document.querySelector("#map");
+ if(!host)return;
+ for(const t of (state.items||[])){
+   if(!t||t.type!=="token")continue;
+   normalizeTokenCondition(t);
+   const extras=[["fatigued","😮‍💨"],["prone","↘"],["bound","⛓"],["distracted","◌"],["vulnerable","⚠"],["stunned","✦"],["dead","☠ Убит"],["unconscious","Без сознания"]]
+     .filter(([k])=>t.conditions[k]).map(([,i])=>i);
+   const parts=[];
+   if(t.wounds)parts.push(`<span class="wound">❤ ${t.wounds}</span>`);
+   if(t.shaken)parts.push('<span class="shaken">⚡ Шок</span>');
+   if(extras.length)parts.push(extras.join(" "));
+   if(!parts.length)continue;
+   const badge=document.createElement("div");
+   badge.className="tokenStatusOverlay";
+   badge.dataset.tokenStatus=t.id;
+   badge.style.left=(Number(t.x)+Number(t.w||state.cell)/2)+"px";
+   badge.style.top=(Number(t.y)+Number(t.h||state.cell)+3)+"px";
+   badge.innerHTML=parts.join(" · ");
+   host.appendChild(badge);
+ }
+}
+function updateSelectedCondition(kind,delta){
+ if(window.networkRoleActive&&!isGM)return;
+ const t=selectedToken();if(!t)return;
+ remember();normalizeTokenCondition(t);
+ if(kind==="wounds")t.wounds=Math.max(0,Math.min(3,t.wounds+delta));
+ if(kind==="shaken")t.shaken=!t.shaken;
+ if(kind==="condition"&&delta)t.conditions[delta]=!t.conditions[delta];
+ render();refreshTokenConditions();renderTokenConditionBadges();
+ const labels={dead:"Убит",unconscious:"Без сознания",fatigued:"Усталость",prone:"Сбит с ног",bound:"Связан",distracted:"Отвлечён",vulnerable:"Уязвим",stunned:"Оглушён"};
+ journal(`${t.name||"Токен"}: `+(kind==="wounds"?"ранения — "+t.wounds:kind==="shaken"?"шок "+(t.shaken?"включён":"снят"):(labels[delta]||delta)+" "+(t.conditions[delta]?"включено":"снято")));
+}
+let initDeck=[],initDrawn=[],initNameIndex=0,initTurnIndex=-1,combatRound=1,heldTurns=[],interruptedTurnStack=[],jokerUsed=[];
+const initRankPower={"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"J":11,"Q":12,"K":13,"A":14};
+const initSuitPower={"♣":1,"♠":2,"♦":3,"♥":4};
+function initPower(c){
+ if(c.joker)return 100;
+ return initRankPower[c.rank]*10+initSuitPower[c.suit];
+}
+function initTurnOrder(includeHeld=true){
+ let a=initDrawn.map((x,i)=>({...x,_i:i}));
+ if(!includeHeld)a=a.filter(x=>!heldTurns.includes(x._i));
+ return a.sort((a,b)=>initPower(b.card)-initPower(a.card));
+}
+
+function isJokerCard(card){return !!(card&&typeof card==="object"&&card.joker)||/JOKER|ДЖОКЕР|🃏/i.test(String(card||""))}
+function diceModifier(){return (Number($("#diceMod").value)||0)+initiativeRollModifier(initCurrent()?.card)}
+function diceModifierDetail(){
+ const cur=initCurrent(),manual=Number($("#diceMod").value)||0;
+ return (cur?cur.name+" · "+initLabel(cur.card):"Нет активного хода")+" · масть "+initiativeModifierText(cur?.card)+" · вручную "+(manual>=0?"+":"")+manual;
+}
+function refreshDiceModifier(){ $("#diceInitiativeHint").textContent=diceModifierDetail() }
+$("#diceMod").addEventListener("input",refreshDiceModifier);
+function initiativeRollModifier(card){
+ const c=card&&typeof card==="object"?initLabel(card):String(card||"");
+ if(isJokerCard(c))return 2;
+ if(c.includes("♥"))return 2;
+ if(c.includes("♦"))return 1;
+ if(c.includes("♠"))return -1;
+ if(c.includes("♣"))return -2;
+ return 0;
+}
+function initiativeModifierText(card){
+ const n=initiativeRollModifier(card);
+ return (n>=0?"+":"")+n;
+}
+function currentInitiativeEntry(){return initCurrent()}
+function jokerAvailableEntries(){
+ return initDrawn.map((x,i)=>({...x,_i:i})).filter(x=>isJokerCard(x.card)&&!jokerUsed.includes(x._i));
+}
+function refreshJokerControls(){
+ refreshDiceModifier();
+ const btn=document.querySelector("#jokerInterrupt"),hint=document.querySelector("#jokerBonusHint");
+ if(!btn||!hint)return;
+ const cur=initCurrent(),available=jokerAvailableEntries();
+ const jokerActive=cur&&isJokerCard(cur.card);
+ hint.classList.toggle("hidden",!jokerActive);
+ const bonusBox=document.querySelector("#initiativeRollBonus"),bonusValue=document.querySelector("#initiativeRollBonusValue");
+ if(bonusBox&&bonusValue){
+   bonusBox.classList.toggle("hidden",!cur);
+   if(cur){
+     const n=initiativeRollModifier(cur.card);
+     bonusValue.textContent=initiativeModifierText(cur.card);
+     bonusBox.classList.toggle("positive",n>0);
+     bonusBox.classList.toggle("negative",n<0);
+   }
+ }
+ // Local draft: GM may trigger any available Joker. In multiplayer this will later be
+ // server-authoritative and restricted to the owner.
+ const canInterrupt=available.some(j=>!cur||j._i!==cur._i);
+ btn.classList.toggle("hidden",!canInterrupt);
+}
+function initCurrent(){
+ const order=initTurnOrder();
+ return initTurnIndex>=0&&initTurnIndex<order.length?order[initTurnIndex]:null;
+}
+function combatRefreshActiveToken(){
+ document.querySelectorAll(".activeTurnRing").forEach(e=>e.remove());
+ const cur=initCurrent(),host=document.querySelector("#map");
+ if(cur&&cur.tokenId&&host){
+   const tok=(state.items||[]).find(t=>t.id===cur.tokenId&&t.type==="token");
+   if(tok){
+     const ring=document.createElement("div");ring.className="activeTurnRing";
+     ring.style.left=(Number(tok.x)-4)+"px";ring.style.top=(Number(tok.y)-4)+"px";
+     ring.style.width=(Number(tok.w||state.cell)+8)+"px";ring.style.height=(Number(tok.h||state.cell)+8)+"px";
+     host.appendChild(ring);
+   }
+ }
+ const r=document.querySelector("#combatRound");if(r)r.textContent=combatRound;
+}
+function initLabel(c){return c.joker?"JOKER 🃏":c.rank+c.suit}
+function initShow(c){
+ const el=$("#initCard");el.className="initCard";
+ if(!c){$("#initA").textContent=$("#initB").textContent="—";$("#initSuit").textContent="?";return}
+ if(c.joker){el.classList.add("joker");$("#initA").textContent=$("#initB").textContent="JOKER";$("#initSuit").textContent="🃏";return}
+ if(c.suit==="♥"||c.suit==="♦")el.classList.add("red");
+ $("#initA").innerHTML=$("#initB").innerHTML=c.rank+"<br>"+c.suit;$("#initSuit").textContent=c.suit;
+}
+function initRenderRows(){
+ const order=initTurnOrder(),cur=initCurrent();
+ $("#initRows").innerHTML=order.length?order.map(x=>{
+   const active=cur&&cur._i===x._i,held=heldTurns.includes(x._i);
+   return `<div class="initRow ${active?"currentTurn":""} ${held?"heldTurn":""} ${isJokerCard(x.card)?"jokerOwner":""} ${active&&isJokerCard(x.card)?"jokerTurn":""}"><span>${x.tokenId?"● ":""}${x.name}${active?'<span class="initTurnTag">← ХОД</span>':""}${held?'<span class="initTurnTag">⏸ УДЕРЖИВАЕТ</span>':""}</span><span class="initVal ${(x.card.suit==="♥"||x.card.suit==="♦")?"initRed":""}">${initLabel(x.card)}</span></div>`;
+ }).join(""):'<div class="initRow"><span>Карты ещё не вытягивались</span><span>—</span></div>';
+ combatRefreshActiveToken();refreshJokerControls();
+}
+function initStatus(){$("#initCount").textContent=`В колоде: ${initDeck.length} · сейчас тянет: ${initNames[initNameIndex]}`}
+function initFresh(){
+ if(window.networkRoleActive&&!isGM)return;
+ initDeck=[];for(const suit of initSuits)for(const rank of initRanks)initDeck.push({rank,suit});initDeck.push({joker:true},{joker:true});
+ for(let i=initDeck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[initDeck[i],initDeck[j]]=[initDeck[j],initDeck[i]]}
+ initDrawn=[];initTurnIndex=-1;heldTurns=[];interruptedTurnStack=[];jokerUsed=[];initShow(null);initRenderRows();initStatus();
+}
+function canDrawInitiative(token){return !!token&&!token.conditions?.dead&&!token.conditions?.unconscious}
+function initTake(name,tokenId=null){
+ if(window.networkRoleActive&&!isGM)return null;
+ if(tokenId&&!canDrawInitiative(state.items.find(t=>t.id===tokenId&&t.type==="token")))return null;
+ if(!initDeck.length){alert("Колода закончилась. Нажмите «Новая колода».");return null}
+ const card=initDeck.pop();initDrawn.push({name,card,tokenId});initTurnIndex=0;initShow(card);journal(`${name}: инициатива ${initLabel(card)}`);return card;
+}
+function initNpcCandidates(){
+ const items=Array.isArray(state.items)?state.items:[];
+ return items.filter(t=>t && t.type==="token");
+}
+function initCardForToken(id){
+ const found=[...initDrawn].reverse().find(x=>x.tokenId===id);
+ return found?found.card:null;
+}
+function initRefreshNpcTokens(){
+ const selectedForDraw=selectedToken();
+ $("#initDraw").disabled=!!selectedForDraw&&!canDrawInitiative(selectedForDraw);
+ $("#initDraw").textContent=selectedForDraw?"Вытянуть: "+(selectedForDraw.name||"PC"):"Вытянуть карту";
+ $("#initDraw").title=$("#initDraw").disabled?"Убитые и бессознательные не тянут инициативу":"";
+ const box=document.querySelector("#initNpcTokens"); if(!box)return;
+ const tokens=initNpcCandidates();
+ if(!tokens.length){
+   box.innerHTML='<div style="padding:5px">На карте пока нет токенов.</div>';
+   return;
+ }
+ box.innerHTML=tokens.map(t=>{
+   const c=initCardForToken(t.id);
+   const card=c?initLabel(c):"—";
+   const red=c&&c.suit&&"♥♦".includes(c.suit)?"color:#d56b6b":"";
+   return `<div style="display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:center;padding:6px 3px;border-bottom:1px solid #292f37">
+     <span>● ${escapeHtml(t.name||"PC")}${!canDrawInitiative(t)?(t.conditions.dead?" · Убит":" · Без сознания"):""}</span>
+     <b style="font-family:Georgia;${red}">${card}</b>
+     <button class="initTokenDraw" ${!canDrawInitiative(t)?'disabled title="Недоступно в этом состоянии"':""} data-token="${escapeHtml(t.id)}" style="padding:5px 7px">Тянуть</button>
+   </div>`;
+ }).join("");
+ box.querySelectorAll(".initTokenDraw").forEach(btn=>btn.addEventListener("click",()=>{
+   const id=btn.dataset.token;
+   const token=(state.items||[]).find(t=>t.id===id&&t.type==="token");
+   if(!canDrawInitiative(token))return;
+   initDrawn=initDrawn.filter(x=>x.tokenId!==id);
+   if(initTake(token.name||"PC",id)){initRenderRows();initStatus();initRefreshNpcTokens()}
+ }));
+}$("#initDraw").addEventListener("click",()=>{const t=selectedToken();if(t&&!canDrawInitiative(t))return;if(initTake(t?(t.name||"PC"):initNames[initNameIndex],t?.id||null)){initRenderRows();initStatus();initRefreshNpcTokens()}});
+$("#initNext").addEventListener("click",()=>{initNameIndex=(initNameIndex+1)%initNames.length;initStatus()});
+$("#initReset").addEventListener("click",initFresh);
+$("#initEndTurn").addEventListener("click",()=>{if(window.networkRoleActive&&!isGM)return;
+ let order=initTurnOrder();
+ if(!order.length)return alert("Сначала вытяните карты инициативы.");
+ const before=initCurrent();
+ if(before){journal(`${before.name}: ${holdingMovement?"удерживает":"завершает"} ход`);if(!holdingMovement){const t=state.items.find(t=>t.id===before.tokenId);if(t)t.movedCells=0}}
+ if(before&&isJokerCard(before.card)){
+   if(!jokerUsed.includes(before._i))jokerUsed.push(before._i);
+   if(interruptedTurnStack.length){
+     const restore=interruptedTurnStack.pop();
+     order=initTurnOrder();
+     initTurnIndex=order.findIndex(x=>x._i===restore);
+   }else{
+     if(initTurnIndex<order.length-1)initTurnIndex++; else {$("#initEndTurn").textContent="↻ Новый раунд";return;}
+   }
+ }else if(initTurnIndex<0)initTurnIndex=0;
+ else if(initTurnIndex<order.length-1)initTurnIndex++;
+ else {
+   $("#initEndTurn").textContent="↻ Новый раунд";
+   return;
+ }
+ const cur=initCurrent();
+ if(cur&&cur.tokenId){
+   selected=cur.tokenId;
+   const tok=(state.items||[]).find(t=>t.id===cur.tokenId);
+   if(tok){
+     panX=stage.clientWidth/2-(tok.x+tok.w/2)*zoom;
+     panY=stage.clientHeight/2-(tok.y+tok.h/2)*zoom;
+     originalRender();
+   }
+ }
+ initRenderRows();initRefreshNpcTokens();refreshTokenConditions();if(initCurrent())journal("Ход: "+initCurrent().name);
+});
+$("#initNpcDeal").addEventListener("click",()=>{if(window.networkRoleActive&&!isGM)return;
+ const tokens=initNpcCandidates();
+ if(!tokens.length)return alert("На карте нет токенов.");
+ for(const token of tokens){
+   if(!canDrawInitiative(token))continue;
+   initDrawn=initDrawn.filter(x=>x.tokenId!==token.id);
+   if(!initTake(token.name||"PC",token.id))break;
+ }
+ initRenderRows();initStatus();initRefreshNpcTokens();
+});
+
+document.querySelectorAll("#extraConditions [data-cond]").forEach(b=>b.addEventListener("click",e=>{
+ e.stopPropagation();updateSelectedCondition("condition",b.dataset.cond);
+}));
+
+document.querySelector("#jokerInterrupt")?.addEventListener("click",()=>{if(window.networkRoleActive&&!isGM)return;
+ const available=jokerAvailableEntries();
+ if(!available.length)return;
+ const cur=initCurrent();
+ let j=available[0];
+ if(available.length>1){
+   const names=available.map((x,i)=>`${i+1}. ${x.name}`).join("\n");
+   const n=Number(prompt("Кто использует Джокера?\n"+names,"1"))-1;
+   if(Number.isInteger(n)&&available[n])j=available[n]; else return;
+ }
+ if(cur&&cur._i!==j._i)interruptedTurnStack.push(cur._i);journal(`${j.name}: перехват Джокером${cur?" у "+cur.name:""}`);
+ const order=initTurnOrder();
+ initTurnIndex=order.findIndex(x=>x._i===j._i);
+ initRenderRows();
+ const tok=j.tokenId&&(state.items||[]).find(t=>t.id===j.tokenId);
+ if(tok){selected=tok.id;panX=stage.clientWidth/2-(tok.x+tok.w/2)*zoom;panY=stage.clientHeight/2-(tok.y+tok.h/2)*zoom;originalRender();refreshTokenConditions();}
+});
+document.querySelector("#initHoldTurn")?.addEventListener("click",()=>{if(window.networkRoleActive&&!isGM)return;
+ const cur=initCurrent();if(!cur)return alert("Сейчас нет активного хода.");
+ if(!heldTurns.includes(cur._i))heldTurns.push(cur._i);
+ holdingMovement=true;try{$("#initEndTurn").click()}finally{holdingMovement=false}
+});
+document.querySelector("#initNewRound")?.addEventListener("click",()=>{if(window.networkRoleActive&&!isGM)return;
+ combatRound++;for(const t of state.items)t.movedCells=0;journal("Начат новый раунд");heldTurns=[];interruptedTurnStack=[];jokerUsed=[];initTurnIndex=-1;initDrawn=[];
+ initFresh();$("#initEndTurn").textContent="✓ Завершить ход";
+ const r=document.querySelector("#combatRound");if(r)r.textContent=combatRound;
+});
+document.querySelector("#floatWoundMinus")?.addEventListener("click",e=>{e.stopPropagation();updateSelectedCondition("wounds",-1)});
+document.querySelector("#floatWoundPlus")?.addEventListener("click",e=>{e.stopPropagation();updateSelectedCondition("wounds",1)});
+document.querySelector("#floatShaken")?.addEventListener("click",e=>{e.stopPropagation();updateSelectedCondition("shaken",0)});
+document.querySelector("#woundMinus")?.addEventListener("click",()=>updateSelectedCondition("wounds",-1));
+document.querySelector("#woundPlus")?.addEventListener("click",()=>updateSelectedCondition("wounds",1));
+document.querySelector("#shakenToggle")?.addEventListener("click",()=>updateSelectedCondition("shaken",0));
+document.addEventListener("pointerup",()=>setTimeout(()=>{refreshTokenConditions();renderTokenConditionBadges()},0));
+initFresh();
+initRefreshNpcTokens();
+refreshTokenConditions();
+renderTokenConditionBadges();
+
+
+
+// --- Map image upload (local draft) ---
+const imageUploadBtn=document.querySelector("#imageUploadBtn");
+const imageFile=document.querySelector("#imageFile");
+if(imageUploadBtn && imageFile){
+  imageUploadBtn.addEventListener("click",()=>imageFile.click());
+  imageFile.addEventListener("change",()=>{
+    const file=imageFile.files && imageFile.files[0];
+    if(!file)return;
+    if(!(file.type||"").startsWith("image/")){
+      alert("Выберите файл изображения.");
+      imageFile.value="";
+      return;
+    }
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const data=String(reader.result||"");
+      const probe=new Image();
+      probe.onload=()=>{
+        remember();
+        state.mapImage=data;
+        // Keep current width, adapt map height to the image aspect ratio.
+        if(probe.naturalWidth && probe.naturalHeight && state.cols){
+          state.rows=Math.max(1,Math.round(state.cols*probe.naturalHeight/probe.naturalWidth));
+        }
+        state.mapImageWidth=state.cols*state.cell;
+        state.mapImageHeight=state.rows*state.cell;
+        syncInputs();render();
+        imageFile.value="";
+      };
+      probe.onerror=()=>{alert("Браузер не смог открыть это изображение.");imageFile.value=""};
+      probe.src=data;
+    };
+    reader.onerror=()=>{alert("Не удалось прочитать файл.");imageFile.value=""};
+    reader.readAsDataURL(file);
+  });
+}
+
+
+// --- Local battle autosave ---
+const LOCAL_SAVE_KEY="swade-map-forge-battle-draft-v1";
+function battleSnapshot(){
+ return {format:"swade-map-forge-battle",version:2,gmNotes:gmAccess()?gmNotes:{},state,initDeck,initDrawn,initNameIndex,initTurnIndex,combatRound,heldTurns,interruptedTurnStack,jokerUsed,panX,panY,zoom,
+   view:{grid:$("#gridToggle").checked,snap:$("#snap").checked},
+   dice:{mod:$("#diceMod").value,trait:$("#traitDie").value,wild:$("#wildDie").checked,acing:$("#acing").checked}};
+}
+function restoreBattle(data){
+ // Validate the whole payload before changing the current battle.
+ const d=JSON.parse(JSON.stringify(data)),st=d.state||d;
+ const finite=n=>typeof n==="number"&&Number.isFinite(n);
+ const card=c=>c&&((c.joker===true)||(initSuits.includes(c.suit)&&initRanks.includes(c.rank)));
+ if(!st||!Array.isArray(st.items)||![st.cols,st.rows,st.cell].every(n=>finite(n)&&n>0)||!Number.isInteger(st.cols)||!Number.isInteger(st.rows))throw Error();
+ const ids=new Set();
+ for(const it of st.items){
+   if(!it||typeof it.id!=="string"||ids.has(it.id)||typeof it.type!=="string"||![it.x,it.y,it.w,it.h].every(finite)||it.w<=0||it.h<=0)throw Error();
+   ids.add(it.id);
+ }
+ if(st.mapImage!=null&&typeof st.mapImage!=="string")throw Error();
+ if(d.format&&(d.format!=="swade-map-forge-battle"||d.version!==2))throw Error();
+ const drawn=d.initDrawn||[];
+ if(!Array.isArray(drawn)||!drawn.every(x=>x&&typeof x.name==="string"&&card(x.card)))throw Error();
+ let deck=d.initDeck;
+ if(deck===undefined){
+   deck=initSuits.flatMap(suit=>initRanks.map(rank=>({rank,suit}))).concat([{joker:true},{joker:true}]);
+   for(const entry of drawn){const i=deck.findIndex(c=>initLabel(c)===initLabel(entry.card));if(i>=0)deck.splice(i,1)}
+   for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}
+ }
+ if(!Array.isArray(deck)||!deck.every(card))throw Error();
+ const index=d.initTurnIndex??-1,round=d.combatRound??1,nameIndex=d.initNameIndex??0;
+ if(!Number.isInteger(index)||index < -1||index>=drawn.length||!Number.isInteger(round)||round<1||!Number.isInteger(nameIndex)||nameIndex<0||nameIndex>=initNames.length)throw Error();
+ for(const key of ["heldTurns","interruptedTurnStack","jokerUsed"]){
+   if(d[key]!==undefined&&(!Array.isArray(d[key])||!d[key].every(i=>Number.isInteger(i)&&i>=0&&i<drawn.length)))throw Error();
+ }
+ if(st.battleLog!==undefined&&(!Array.isArray(st.battleLog)||!st.battleLog.every(r=>r&&typeof r.text==="string"&&typeof r.time==="string")))throw Error();
+ if(d.gmNotes!==undefined&&(!d.gmNotes||typeof d.gmNotes!=="object"||Array.isArray(d.gmNotes)||!Object.values(d.gmNotes).every(v=>typeof v==="string")))throw Error();
+ gmNotes=d.gmNotes||{};state=st;initDeck=deck;initDrawn=drawn;initTurnIndex=index;combatRound=round;initNameIndex=nameIndex;
+ heldTurns=d.heldTurns||[];interruptedTurnStack=d.interruptedTurnStack||[];jokerUsed=d.jokerUsed||[];
+ panX=finite(d.panX)?d.panX:35;panY=finite(d.panY)?d.panY:35;zoom=finite(d.zoom)?Math.max(.25,Math.min(3,d.zoom)):1;
+ $("#gridToggle").checked=d.view?.grid??true;$("#snap").checked=d.view?.snap??true;
+ $("#diceMod").value=Number(d.dice?.mod)||0;$("#traitDie").value=["4","6","8","10","12"].includes(d.dice?.trait)?d.dice.trait:"6";
+ $("#wildDie").checked=d.dice?.wild??true;$("#acing").checked=d.dice?.acing??true;
+ selected=null;history=[];future=[];drag=null;
+ syncInputs();render();initRenderRows();initStatus();initShow(initCurrent()?.card||null);
+ $("#initEndTurn").textContent="✓ Завершить ход";
+}
+function saveBattleLocal(){
+ try{localStorage.setItem(LOCAL_SAVE_KEY,JSON.stringify({...battleSnapshot(),gmNotes}))}catch(e){}
+}
+function loadBattleLocal(){
+ if(new URL(location.href).searchParams.has("room")||window.networkRoleActive)return;
+ try{
+   const raw=localStorage.getItem(LOCAL_SAVE_KEY);if(!raw)return;
+   if(confirm("Найдено автосохранение этой карты. Восстановить?"))restoreBattle(JSON.parse(raw));
+ }catch(e){alert("Не удалось восстановить автосохранение.")}
+}
+setInterval(saveBattleLocal,5000);
+window.addEventListener("beforeunload",saveBattleLocal);
+setTimeout(loadBattleLocal,100);
+
+</script>
+</body>
+</html>
+
