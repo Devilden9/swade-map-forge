@@ -1,9 +1,12 @@
+Warning: truncated output (original token count: 27910)
+Total output lines: 1199
+
 <!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Savage Worlds — Map Forge v2</title>
+<title>Повелитель Тайн — SWADE Map Forge</title>
 <style>
 :root{--bg:#0d1014;--panel:#171c22;--panel2:#202731;--line:#3d4652;--text:#eee8dc;--muted:#aaa397;--gold:#d0b36f}
 *{box-sizing:border-box}
@@ -32,6 +35,7 @@ label{display:block;color:var(--muted);margin:8px 0 4px}input[type=number],input
 .hidden{display:none!important}.status{font-size:12px;color:#aaa}
 .measure{position:absolute;height:2px;background:#f4d36e;transform-origin:0 50%;pointer-events:none;z-index:20}.measureLabel{position:absolute;background:#111d;border:1px solid #8f7a48;border-radius:5px;padding:4px 6px;pointer-events:none;z-index:21}
 #toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);background:#10151be8;border:1px solid #596575;border-radius:8px;padding:8px 12px;z-index:30}
+#turnAlert{position:fixed;left:50%;top:68px;transform:translateX(-50%);z-index:200;background:#403417;color:#fff1bd;border:2px solid #e0bd59;border-radius:10px;padding:12px 20px;font:700 17px Georgia,serif;box-shadow:0 6px 22px #0009}
 
 .dicePanel{position:absolute;right:18px;top:18px;width:330px;max-height:calc(100% - 36px);overflow:auto;background:#151a20f2;border:1px solid #586270;border-radius:12px;padding:13px;z-index:50;box-shadow:0 15px 45px #0009}
 .dicePanel h2{font:700 17px Georgia,serif;color:#e0c681;margin:0 0 10px}
@@ -40,6 +44,7 @@ label{display:block;color:var(--muted);margin:8px 0 4px}input[type=number],input
 .diceResult{margin-top:12px;padding:12px;background:#0d1116;border:1px solid #3f4854;border-radius:9px;text-align:center}
 .diceBig{font:700 32px Georgia,serif;color:#f0d37f}.diceSub{color:#aaa397;margin-top:4px;font-size:12px}
 .diceHistory{margin-top:10px;border-top:1px solid #39414b;padding-top:8px;max-height:180px;overflow:auto}
+.panelDragHandle{cursor:move;user-select:none}.quickMods{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.quickMods button.on{background:#5b4822;border-color:#e0bd59}
 .hist{padding:6px 4px;border-bottom:1px solid #292f37;font-size:12px}.success{color:#b9d88d}.raise{color:#f0d37f}.fail{color:#c98b82}
 
 
@@ -116,15 +121,28 @@ body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="
 .portraitName{display:none}.sceneControls{display:flex;gap:5px;align-items:center}.sceneControls select{max-width:180px}
 .mpPanel{max-height:calc(100% - 36px);overflow:auto}
 .token.gmHidden{opacity:.45;border-style:dashed}.hiddenTokenTag{position:absolute;right:2px;top:2px;font-size:10px;background:#171c22;color:white;pointer-events:none}
+/* Victorian occult theme */
+:root{--bg:#0d0c12;--panel:#19151a;--panel2:#251d20;--line:#604d37;--text:#e8dfcc;--muted:#b4a58f;--gold:#c5a15a}
+html,body{font-family:Georgia,"Times New Roman",serif;background:radial-gradient(ellipse at 50% 0,#282038 0,#0c0b10 64%)}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.14;background:repeating-radial-gradient(ellipse at 20% 30%,transparent 0 3px,#c5a15a 4px 5px,transparent 6px 12px);mix-blend-mode:soft-light;z-index:300}
+.top{background:linear-gradient(90deg,#161018,#34251f 48%,#161018);border-bottom:2px solid #9a783c;box-shadow:0 3px 14px #000b}
+.brand{font-variant:small-caps;letter-spacing:.12em;color:#e6c979;text-shadow:0 1px 0 #000,0 0 10px #b8893f88}
+aside{background:linear-gradient(135deg,#21191c,#151216 70%);border-color:#6b5338!important}.stage{background:radial-gradient(ellipse at center,#252530,#09090d 72%)}
+button{font-family:Georgia,"Times New Roman",serif;background:linear-gradient(#382b27,#21191b);border-color:#84643c;border-radius:3px;color:#ebdfc8;box-shadow:inset 0 1px #ffffff12,0 1px 2px #0008}
+button:hover{background:linear-gradient(#543c2d,#2b1e1c);border-color:#d4ae64}.active{outline-color:#d5ae59;background:linear-gradient(#63452b,#332018)}
+input[type=number],input[type=text],select,textarea{background:#121016!important;border-color:#755b3e!important;color:#eee0c5!important;border-radius:2px!important}
+h2,h3,label{font-family:Georgia,"Times New Roman",serif;color:#ddbf78!important;letter-spacing:.08em}.map{background-color:#30271f;box-shadow:0 0 60px #000, inset 0 0 40px #0008}.grid{background-image:linear-gradient(to right,rgba(224,194,131,.18) 1px,transparent 1px),linear-gradient(to bottom,rgba(224,194,131,.18) 1px,transparent 1px)}
+.token{background:radial-gradient(circle at 35% 28%,#8d7860,#302523 72%);border-color:#d7bf83;box-shadow:inset 0 0 0 2px #281c19,0 2px 5px #000b}.wall{background:#281f21;border-color:#a17d51}.door{background:repeating-linear-gradient(90deg,#5c3021 0 8px,#3b1d18 8px 16px);border-color:#ba8551}.prop{background:#4d3928;border-color:#ad8953}
+.dicePanel,.mpPanel,.initiativeDraft,#battleJournal,dialog{background:linear-gradient(145deg,#231b1eeb,#110f14f4)!important;border:1px solid #987545!important;box-shadow:0 12px 34px #000c!important}.diceResult,.initDeck,#combatRoundBox{background:#130f13!important;border-color:#735836!important}.initCard{background:linear-gradient(135deg,#e8ddbe,#cdb889);box-shadow:inset 0 0 0 3px #62472a,0 8px 18px #000b}.initRow.currentTurn{background:#4c321f;outline-color:#d9b45e}.tokenStatusOverlay{background:#211718;border-color:#a8814b;color:#f4e8cc}.panelDragHandle:after{content:"  ✥";color:#9d783e;font-size:12px}
 </style>
 </head>
 <body>
 <dialog id="nameDialog"><form id="nameForm"><h3>Как вас зовут?</h3><p>Это имя увидят участники комнаты.</p><label for="joinName">Ваше имя</label><input id="joinName" type="text" maxlength="32" required autocomplete="nickname"><p id="nameError" class="hint" role="status"></p><button type="submit">Войти в комнату</button> <button id="cancelJoin" type="button">Отмена</button></form></dialog><dialog id="sceneDialog"><form id="sceneForm"><h3>Новая сцена</h3><label for="newSceneName">Название</label><input id="newSceneName" type="text" maxlength="80" required><label for="newSceneImage">Карта сцены (необязательно)</label><input id="newSceneImage" type="file" accept="image/*"><p id="sceneError" class="hint" role="status"></p><button id="sceneSubmit" type="submit">Загрузить сцену</button> <button id="sceneCancel" type="button">Отмена</button></form></dialog><div id="app">
 <header class="top">
- <div class="brand">SAVAGE WORLDS · MAP FORGE v2</div>
+ <div class="brand">ПОВЕЛИТЕЛЬ ТАЙН · SWADE</div>
  <button id="undo">↶ Undo</button><button id="redo">↷ Redo</button>
  <button id="save">Сохранить бой</button><button id="load">Загрузить</button><input id="file" type="file" accept=".json,application/json" hidden>
- <button id="export">Экспорт PNG</button><button id="imageUploadBtn">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="initiativeToggle">🃏 Инициатива</button><button id="mpToggle">🌐 Multiplayer</button><div class="sceneControls"><label for="sceneSelect" style="margin:0">Сцена</label><select id="sceneSelect"></select><button id="sceneAdd" title="Создать сцену и загрузить карту">+ Сцена</button><button id="sceneRename" title="Название сцены">✎</button></div><button id="journalToggle">Журнал боя</button><label id="localRoleLabel" style="margin:0">Проверка роли <select id="localRole" style="width:auto"><option value="gm">GM</option><option value="player">Игрок</option></select></label><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
+ <button id="export">Экспорт PNG</button><button id="exportReport">Отчёт TXT</button><button id="imageUploadBtn">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="initiativeToggle">🃏 Инициатива</button><button id="mpToggle">🌐 Multiplayer</button><div class="sceneControls"><label for="sceneSelect" style="margin:0">Сцена</label><select id="sceneSelect"></select><button id="sceneAdd" title="Создать сцену и загрузить карту">+ Сцена</button><button id="sceneRename" title="Название сцены">✎</button></div><button id="journalToggle">Журнал боя</button><label id="localRoleLabel" style="margin:0">Проверка роли <select id="localRole" style="width:auto"><option value="gm">GM</option><option value="player">Игрок</option></select></label><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
 </header>
 <div class="workspace">
 <aside class="left">
@@ -149,7 +167,7 @@ body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="
  <div class="hint"><b>Как пользоваться:</b><br>1. Выбери «Токен», «Стена» и т.п.<br>2. Кликни по карте.<br>3. Переключись на «Выбор» и перетаскивай объект.<br><br>Колесо — масштаб. Средняя кнопка мыши — камера. Delete — удалить.</div>
 </aside>
 
-<main class="stage" id="stage"><div id="moveReadout" class="hidden"></div><section id="battleJournal" class="hidden"><button id="journalClose" style="float:right">Закрыть</button><h3>Журнал боя</h3><div id="journalEntries"></div></section>
+<main class="stage" id="stage"><div id="moveReadout" class="hidden"></div><section id="battleJournal" class="hidden"><button id="journalClose" style="float:right">Закрыть</button><h3>Журнал боя</h3><select id="journalFilter"><option value="all">Все события</option><option value="dice">Броски</option><option value="benny">Фишки</option><option value="condition">Состояния</option><option value="initiative">Инициатива</option></select><div id="journalEntries"></div></section>
  <div class="world" id="world"><div class="map" id="map"><img id="mapImage" class="mapImage hidden" alt=""><div class="grid" id="grid"></div></div></div>
  <div id="measureLine" class="measure hidden"></div><div id="measureLabel" class="measureLabel hidden"></div>
 
@@ -181,14 +199,16 @@ body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="
   <p id="diceInitiativeHint" class="hint" aria-live="polite">Нет активного хода · масть +0</p>
   <label><input id="wildDie" type="checkbox" checked> Wild Die d6</label>
   <label><input id="acing" type="checkbox" checked> Взрывающиеся кубы (Acing)</label>
+  <div class="quickMods" id="quickMods"><button data-mod="-2">Укрытие −2</button><button data-mod="-2">Дальность −2</button><button data-mod="-2">Темнота −2</button><button data-mod="1">Поддержка +1</button></div>
   <button id="traitRoll" style="width:100%;margin-top:8px">Бросок характеристики / навыка</button>
   <div class="diceResult">
    <div class="diceBig" id="diceBig">—</div>
    <div class="diceSub" id="diceSub">Выбери куб или сделай Trait Roll</div>
   </div>
   <div class="diceHistory" id="diceHistory"></div>
-  <button id="clearDice" style="width:100%;margin-top:8px">Очистить историю</button>
+ <button id="clearDice" style="width:100%;margin-top:8px">Очистить историю</button><button id="tablesToggle" style="width:100%;margin-top:8px">🎲 Случайные таблицы</button>
  </div>
+ <div class="dicePanel hidden" id="tablesPanel" style="left:18px;right:auto;top:80px;z-index:56"><h2>🎲 Случайные таблицы</h2><label>Таблица</label><select id="tableSelect"></select><button id="newTable" type="button" style="width:100%;margin-top:6px">Новая таблица</button><label>Название</label><input id="tableName" maxlength="60"><label>Куб</label><select id="tableDie"><option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option><option>20</option></select><label>Результаты</label><textarea id="tableEntries" style="width:100%;min-height:150px" placeholder="1-2: Ничего не происходит&#10;3: Находка&#10;4-6: Осложнение"></textarea><p class="hint">Одна строка: число или диапазон, затем двоеточие и результат.</p><button id="saveTable" type="button">Сохранить</button><button id="rollTable" type="button">Бросить</button><button id="closeTables" type="button" style="float:right">Закрыть</button><p id="tableResult" class="hint"></p></div>
 
  
  <div class="initiativeDraft hidden" id="initiativeDraft">
@@ -221,6 +241,7 @@ body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="
   <div class="initRows" id="initRows"></div>
  </div>
 <div id="toast">Выбери инструмент слева и кликни по карте</div>
+<div id="turnAlert" class="hidden" role="status" aria-live="assertive">Ваш ход!</div>
 </main>
 
 <aside class="right">
@@ -231,9 +252,10 @@ body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="
    <div class="row"><div><label>X</label><input id="pX" type="number"></div><div><label>Y</label><input id="pY" type="number"></div></div>
    <div class="row"><div><label>Ширина</label><input id="pW" type="number"></div><div><label>Высота</label><input id="pH" type="number"></div></div>
    <label>Поворот, °</label><input id="pR" type="number">
-   <div id="tokenExtras" class="hidden">
+ <div id="tokenExtras" class="hidden">
  <button id="tokenVisibility" type="button" style="width:100%;margin:8px 0">Скрыть от игроков</button><p id="visibilityHint" class="hint"></p><div id="portraitControls"><label>Портрет токена</label><button id="portraitUpload" type="button">Загрузить портрет</button><button id="portraitRemove" type="button">Убрать</button><input id="portraitFile" type="file" accept="image/png,image/jpeg,image/webp" hidden><p id="portraitNotice" class="hint" role="status"></p></div><label>Фишки</label><div style="display:flex;gap:10px;align-items:center"><button id="bennyMinus" type="button" aria-label="Потратить фишку">−</button><b id="bennyCount">0</b><button id="bennyPlus" type="button" aria-label="Добавить фишку">+</button></div><p class="hint">Игрок тратит фишки. GM добавляет и убавляет.</p>
  <p id="tokenMovement" class="hint"></p><div id="gmNotesBox"><label for="gmNotes">Заметки GM</label><textarea id="gmNotes" placeholder="Броня, защита, оружие, особенности…"></textarea><p class="hint">Заметки хранятся у GM и не отправляются в комнату.</p></div></div>
+ <div id="tokenProfile" class="hidden"><label>Шаблон</label><select id="tokenTemplate"><option value="hero">Герой</option><option value="extra">Обычный противник</option><option value="wild">Сильный противник</option><option value="ally">Союзник</option></select><button id="applyTemplate" type="button" style="width:100%;margin-top:6px">Применить шаблон</button><label>Тип</label><input id="profileType" maxlength="40"><label>Группа инициативы</label><input id="profileGroup" maxlength="40" placeholder="Например: Гоблины"><div class="row"><div><label>Защита</label><input id="profileParry" type="number" min="0"></div><div><label>Стойкость</label><input id="profileToughness" type="number" min="0"></div></div><label>Скорость</label><input id="profilePace" type="number" min="0"><div class="row"><div><label>Патроны</label><input id="resourceAmmo" type="number" min="0"></div><div><label>Power Points</label><input id="resourcePower" type="number" min="0"></div></div><label>Открытая заметка</label><textarea id="profileNotes" maxlength="300" placeholder="Видимые всем сведения"></textarea></div><div id="tokenProfileView" class="hidden"></div>
  <button id="duplicateToken" type="button" style="width:100%;margin-top:10px">Дублировать токен</button><div id="duplicateHint" class="hint" role="status"></div>
    <button id="delete" style="width:100%;margin-top:10px">Удалить</button>
   </div>
@@ -255,6 +277,7 @@ body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="
    <button type="button" data-cond="vulnerable">Уязвим</button>
    <button type="button" data-cond="stunned">Оглушён</button>
  </div>
+ <label>Срок нового состояния</label><select id="conditionDuration"><option value="0">До снятия вручную</option><option value="1">До конца следующего раунда</option><option value="2">На 2 раунда</option><option value="3">На 3 раунда</option></select>
 </div>
  <div class="section"><h3>SWADE</h3>
   <label>Размер Blast</label><select id="blastSize"><option value="1">Small</option><option value="2" selected>Medium</option><option value="3">Large</option></select>
@@ -284,13 +307,19 @@ function journal(text){
 }
 function renderJournal(){
  const host=$("#journalEntries");host.replaceChildren();
+ const mode=$("#journalFilter")?.value||"all",terms={dice:"Бросок",benny:"фишк",condition:"ранени|шок|Убит|сознани|Устал|Сбит|Связан|Отвлеч|Уязв|Оглуш",initiative:"инициатив|Ход|раунд"};
  for(const row of (state.battleLog||[]).slice().reverse()){
+   if(mode!=="all"&&!new RegExp(terms[mode],"i").test(row.text))continue;
    const p=document.createElement("p");p.textContent=`${new Date(row.time).toLocaleTimeString()} · Раунд ${row.round} · ${row.actor}: ${row.text}`;host.appendChild(p);
  }
  if(!host.children.length)host.textContent="Событий пока нет.";
 }
 function canControlToken(t){return !!t&&t.type==="token"&&(gmAccess()||(window.networkRoleActive&&roomPlayers.some(p=>p.id===myClientId&&p.tokenId===t.id)))}
+function isPlayerToken(t){return !!t?.ownerClientId}
 function sendTokenValues(t,values){if(socket?.readyState===1&&canControlToken(t)){socket.send(JSON.stringify({type:"updateToken",tokenId:t.id,values}));return true}return false}
+function tokenProfile(t){return t?.profile&&typeof t.profile==="object"?t.profile:{type:"",group:"",parry:"",toughness:"",pace:"",ammo:0,power:0,notes:""}}
+const tokenTemplates={hero:{name:"Герой",type:"Герой",parry:5,toughness:5,pace:6,wildCard:true},extra:{name:"Противник",type:"Обычный противник",parry:4,toughness:5,pace:6,wildCard:false},wild:{name:"Сильный противник",type:"Дикий противник",parry:6,toughness:7,pace:6,wildCard:true},ally:{name:"Союзник",type:"Союзник",parry:5,toughness:5,pace:6,wildCard:true}};
+function refreshTokenProfile(){const t=selectedToken(),gm=gmAccess(),profile=tokenProfile(t),editor=$("#tokenProfile"),view=$("#tokenProfileView"),playerToken=isPlayerToken(t);editor.classList.toggle("hidden",!t||!gm||playerToken);view.classList.toggle("hidden",!t||gm);if(!t)return;if(gm&&!playerToken){$("#profileType").value=profile.type||"";$("#profileGroup").value=profile.group||"";$("#profileParry").value=profile.parry??"";$("#profileToughness").value=profile.toughness??"";$("#profilePace").value=profile.pace??"";$("#resourceAmmo").value=profile.ammo??0;$("#resourcePower").value=profile.power??0;$("#profileNotes").value=profile.notes||""}else if(!gm){const parts=[profile.type,profile.parry!==""&&profile.parry!=null?"Защита "+profile.parry:"",profile.toughness!==""&&profile.toughness!=null?"Стойкость "+profile.toughness:"",profile.pace!==""&&profile.pace!=null?"Скорость "+profile.pace:"",`Патроны ${profile.ammo||0}`,`PP ${profile.power||0}`,profile.notes].filter(Boolean);view.textContent=parts.length?parts.join(" · "):"Карточка персонажа пока не заполнена."}}
 function refreshExtras(){
  const visibilityToken=current();$("#tokenVisibility").classList.toggle("hidden",!gmAccess()||visibilityToken?.type!=="token");$("#visibilityHint").classList.toggle("hidden",!gmAccess()||visibilityToken?.type!=="token");
  $("#tokenVisibility").textContent=visibilityToken?.hidden?"Показать игрокам":"Скрыть от игроков";$("#tokenVisibility").setAttribute("aria-pressed",String(!!visibilityToken?.hidden));$("#visibilityHint").textContent=visibilityToken?.hidden?"Токен виден только GM.":"Токен виден игрокам.";
@@ -300,9 +329,10 @@ function refreshExtras(){
  if(!token)return;
  const gm=gmAccess(),count=Math.max(0,Math.floor(Number(t.bennies)||0));
  $("#bennyCount").textContent=count;$("#bennyPlus").disabled=!gm;$("#bennyMinus").disabled=count===0||(window.networkRoleActive&&!gm&&!roomPlayers.some(p=>p.id===myClientId&&p.tokenId===t.id));
- $("#gmNotesBox").classList.toggle("hidden",!gm);
+ $("#gmNotesBox").classList.toggle("hidden",!gm||isPlayerToken(t));
  if(document.activeElement!==$("#gmNotes"))$("#gmNotes").value=gm?(gmNotes[t.id]||""):"";
- $("#tokenMovement").textContent=`Пройдено за ход: ${(Number(t.movedCells)||0).toFixed(1)} клет.`;
+ const pace=Number(tokenProfile(t).pace)||0,walked=Number(t.movedCells)||0;$("#tokenMovement").textContent=pace?`Пройдено за ход: ${walked.toFixed(1)} из ${pace} клет.`:`Пройдено за ход: ${walked.toFixed(1)} клет.`;
+ refreshTokenProfile();
 }
 function changeBenny(delta){
  if(socket?.readyState===1){const t=selectedToken();if(t)socket.send(JSON.stringify({type:"benny",tokenId:t.id,delta}));return !!t}
@@ -334,302 +364,13 @@ function render(){
    if(it.portrait&&/^data:image\/(png|jpeg|webp);base64,/.test(it.portrait)){
      e.replaceChildren();const img=document.createElement("img");img.className="portrait";img.src=it.portrait;img.alt=it.name||"Токен";e.appendChild(img);const label=document.createElement("span");label.className="portraitName";label.textContent=it.name||"PC";e.appendChild(label);
    }
- } if(it.type==="prop")e.textContent=it.name||"OBJ";
-   if(it.type==="token"&&it.hidden){const badge=document.createElement("span");badge.className="hiddenTokenTag";badge.textContent="GM";e.appendChild(badge)}map.appendChild(e);
- }
- updateProps(); $("#status").textContent=Math.round(zoom*100)+"%";
-}
-function updateProps(){
- refreshExtras();
- const it=current(),has=!!it; $("#none").classList.toggle("hidden",has);$("#props").classList.toggle("hidden",!has);
- $("#duplicateToken").classList.toggle("hidden",!it||it.type!=="token");
- if(!it)return; $("#pName").value=it.name||"";$("#pX").value=Math.round(it.x);$("#pY").value=Math.round(it.y);$("#pW").value=Math.round(it.w);$("#pH").value=Math.round(it.h);$("#pR").value=it.r||0;
-}
-function local(ev){const r=stage.getBoundingClientRect();return{x:(ev.clientX-r.left-panX)/zoom,y:(ev.clientY-r.top-panY)/zoom}}
-function add(type,x,y){
- remember();const c=state.cell;let w=c,h=c,name="";
- if(type==="wall"){w=c*3;h=Math.max(8,c*.18)}
- if(type==="door"){w=c;h=Math.max(10,c*.22)}
- if(type==="fog"){w=c*4;h=c*3}
- if(type==="blast"){const n=Number($("#blastSize").value);w=h=c*n*2}
- if(type==="cone"){w=c*4;h=c*3}
- if(type==="token")name="PC";
- const it={id:uid(),type,x:snap(x-w/2),y:snap(y-h/2),w,h,r:0,name};state.items.push(it);selected=it.id;render();
-}
-map.addEventListener("pointerdown",ev=>{
- ev.preventDefault();const p=local(ev),hit=ev.target.closest(".entity");
- if(tool==="pan"||ev.button===1){drag={kind:"pan",sx:ev.clientX,sy:ev.clientY,px:panX,py:panY};stage.setPointerCapture?.(ev.pointerId);return}
- if(tool==="erase"){if(window.networkRoleActive&&!isGM)return;if(hit){remember();state.items=state.items.filter(i=>i.id!==hit.dataset.id);selected=null;render()}return}
- if(tool==="measure"){drag={kind:"measure",start:p};showMeasure(p,p);return}
- if(tool==="select"){
-   if(!hit){selected=null;render();return}
-   selected=hit.dataset.id;const it=current();if(window.networkRoleActive&&!isGM&&!roomPlayers.some(p=>p.id===myClientId&&p.tokenId===it.id&&(!roomPlayers.some(p=>p.isTurn)||p.isTurn))){render();return}remember();drag={kind:"item",it,dx:p.x-it.x,dy:p.y-it.y,path:0,lastX:it.x,lastY:it.y};render();return;
- }
- if(window.networkRoleActive&&!isGM)return;add(tool,p.x,p.y);
-});
-window.addEventListener("pointermove",ev=>{
- if(!drag)return;
- if(drag.kind==="pan"){panX=drag.px+(ev.clientX-drag.sx);panY=drag.py+(ev.clientY-drag.sy);render()}
- if(drag.kind==="item"){const p=local(ev);drag.it.x=snap(p.x-drag.dx);drag.it.y=snap(p.y-drag.dy);
- if(drag.it.type==="token"){
- drag.path+=Math.hypot(drag.it.x-drag.lastX,drag.it.y-drag.lastY)/state.cell;drag.lastX=drag.it.x;drag.lastY=drag.it.y;
- $("#moveReadout").classList.remove("hidden");$("#moveReadout").textContent=`${drag.it.name||"Токен"}: ${((Number(drag.it.movedCells)||0)+drag.path).toFixed(1)} клет. за ход`;
- }render()}
- if(drag.kind==="measure")showMeasure(drag.start,local(ev));
-});
-window.addEventListener("pointerup",()=>{
- if(drag&&drag.kind==="measure"){$("#measureLine").classList.add("hidden");$("#measureLabel").classList.add("hidden")}
- if(drag?.kind==="item"&&drag.it.type==="token"&&drag.path>0){drag.it.movedCells=(Number(drag.it.movedCells)||0)+drag.path;journal(`${drag.it.name||"Токен"}: перемещение ${drag.path.toFixed(1)} клет., за ход ${drag.it.movedCells.toFixed(1)}`);render()}
- if(drag?.kind==="item"&&window.networkRoleActive&&!isGM&&socket?.readyState===1)socket.send(JSON.stringify({type:"moveToken",tokenId:drag.it.id,x:drag.it.x,y:drag.it.y}));$("#moveReadout").classList.add("hidden");drag=null;
-});
-function showMeasure(a,b){
- const ax=a.x*zoom+panX,ay=a.y*zoom+panY,bx=b.x*zoom+panX,by=b.y*zoom+panY,dx=bx-ax,dy=by-ay,d=Math.hypot(dx,dy);
- const line=$("#measureLine"),lab=$("#measureLabel");line.classList.remove("hidden");lab.classList.remove("hidden");
- line.style.left=ax+"px";line.style.top=ay+"px";line.style.width=d+"px";line.style.transform=`rotate(${Math.atan2(dy,dx)*180/Math.PI}deg)`;
- lab.style.left=(bx+8)+"px";lab.style.top=(by+8)+"px";lab.textContent=(Math.hypot(b.x-a.x,b.y-a.y)/state.cell).toFixed(1)+" клет.";
-}
-stage.addEventListener("wheel",ev=>{
- ev.preventDefault();const old=zoom,r=stage.getBoundingClientRect(),mx=ev.clientX-r.left,my=ev.clientY-r.top;
- zoom=Math.max(.25,Math.min(3,zoom*(ev.deltaY<0?1.12:.89)));panX=mx-(mx-panX)*(zoom/old);panY=my-(my-panY)*(zoom/old);render();
-},{passive:false});
-document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>{
- tool=b.dataset.tool;document.querySelectorAll("[data-tool]").forEach(x=>x.classList.toggle("active",x===b));stage.style.cursor=tool==="pan"?"grab":tool==="select"?"default":"crosshair";
-}));
-$("#gridToggle").addEventListener("change",render);
-function resizeMap(cols,rows,cell){
- const message=$("#gridResizeMessage");
- if(socket&&socket.readyState===1&&!isGM){message.textContent="Размер карты может менять только GM.";syncInputs();return false}
- if(!Number.isInteger(cols)||!Number.isInteger(rows)||cols<1||rows<1||cols>100||rows>100||!Number.isInteger(cell)||cell<20||cell>120){
-   message.textContent="Введите целое число: 1–100 клеток, размер клетки 20–120 px.";syncInputs();return false;
- }
- const width=cols*cell,height=rows*cell;
- const blocked=state.items.some(it=>{
-   const a=(Number(it.r)||0)*Math.PI/180;
-   const w=Number(it.w),h=Number(it.h);
-   const right=Number(it.x)+w/2+(Math.abs(w*Math.cos(a))+Math.abs(h*Math.sin(a)))/2;
-   const bottom=Number(it.y)+h/2+(Math.abs(w*Math.sin(a))+Math.abs(h*Math.cos(a)))/2;
-   return (width<state.cols*state.cell&&right>width+0.001)||(height<state.rows*state.cell&&bottom>height+0.001);
- });
- if(blocked){message.textContent="У края есть объекты. Переместите их внутрь карты перед уменьшением.";syncInputs();return false}
- if(cols===state.cols&&rows===state.rows&&cell===state.cell){syncInputs();return true}
- remember();
- if(state.mapImage){
-   state.mapImageWidth=state.mapImageWidth||state.cols*state.cell;
-   state.mapImageHeight=state.mapImageHeight||state.rows*state.cell;
- }
- state.cols=cols;state.rows=rows;state.cell=cell;
- syncInputs();render();saveBattleLocal();
- message.textContent=`Сетка: ${cols} × ${rows}. Изменение можно отменить кнопкой Undo.`;
- return true;
-}
-$("#resize").addEventListener("click",()=>resizeMap(Number($("#cols").value),Number($("#rows").value),Number($("#cell").value)));
-document.querySelectorAll("[data-grid-axis]").forEach(button=>button.addEventListener("click",()=>{
- const axis=button.dataset.gridAxis,delta=Number(button.dataset.gridDelta);
- resizeMap(state.cols+(axis==="cols"?delta:0),state.rows+(axis==="rows"?delta:0),state.cell);
-}));
-["pName","pX","pY","pW","pH","pR"].forEach(id=>$("#"+id).addEventListener("change",()=>{
- const it=current();if(!it)return;if(window.networkRoleActive&&!isGM){if(canControlToken(it))sendTokenValues(it,{name:$("#pName").value});return}remember();it.name=$("#pName").value;it.x=Number($("#pX").value)||0;it.y=Number($("#pY").value)||0;it.w=Math.max(4,Number($("#pW").value)||4);it.h=Math.max(4,Number($("#pH").value)||4);it.r=Number($("#pR").value)||0;render();
-}));
-function duplicateToken(){
- if(!gmAccess())return;
- const source=current();if(!source||source.type!=="token")return;
- const hint=$("#duplicateHint");
- if(socket&&socket.readyState===1&&!isGM){hint.textContent="Дублирование доступно GM.";return}
- const candidates=[];
- for(let y=0;y+source.h<=state.rows*state.cell;y+=state.cell){
-   for(let x=0;x+source.w<=state.cols*state.cell;x+=state.cell){
-     if(!state.items.some(it=>x<it.x+it.w&&x+source.w>it.x&&y<it.y+it.h&&y+source.h>it.y))candidates.push({x,y});
-   }
- }
- candidates.sort((a,b)=>Math.hypot(a.x-source.x,a.y-source.y)-Math.hypot(b.x-source.x,b.y-source.y));
- if(!candidates.length){hint.textContent="Нет свободного места. Расширьте сетку.";return}
- const base=(source.name||"PC").replace(/\s+\d+$/,"");
- const names=new Set(state.items.filter(it=>it.type==="token").map(it=>it.name));
- let n=2;while(names.has(base+" "+n))n++;
- remember();const copy=JSON.parse(JSON.stringify(source));
- copy.id=uid();copy.bennies=0;copy.movedCells=0;copy.name=base+" "+n;Object.assign(copy,candidates[0]);
- state.items.push(copy);selected=copy.id;render();saveBattleLocal();
- hint.textContent="Копия создана. Состояния скопированы; карта инициативы выдаётся отдельно.";
-}
-$("#duplicateToken").addEventListener("click",duplicateToken);
-function del(){if(window.networkRoleActive&&!isGM)return;if(!selected)return;remember();state.items=state.items.filter(i=>i.id!==selected);selected=null;render()}
-$("#delete").addEventListener("click",del);
-window.addEventListener("keydown",ev=>{if(ev.key==="Delete"&&!["INPUT","TEXTAREA"].includes(document.activeElement.tagName))del()});
-$("#undo").addEventListener("click",()=>{if(!gmAccess()||!history.length)return;future.push(JSON.stringify(state));const retainedLog=state.battleLog,retainedBennies=new Map(state.items.map(t=>[t.id,t.bennies]));state=JSON.parse(history.pop());state.battleLog=retainedLog;for(const t of state.items){if(retainedBennies.has(t.id))t.bennies=retainedBennies.get(t.id)}journal("Отмена изменения карты");selected=null;syncInputs();render()});
-$("#redo").addEventListener("click",()=>{if(!gmAccess()||!future.length)return;history.push(JSON.stringify(state));const retainedLog=state.battleLog,retainedBennies=new Map(state.items.map(t=>[t.id,t.bennies]));state=JSON.parse(future.pop());state.battleLog=retainedLog;for(const t of state.items){if(retainedBennies.has(t.id))t.bennies=retainedBennies.get(t.id)}journal("Повтор изменения карты");selected=null;syncInputs();render()});
-$("#save").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(battleSnapshot(),null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="swade-battle.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
-$("#load").addEventListener("click",()=>$("#file").click());
-$("#file").addEventListener("change",async ev=>{
- const f=ev.target.files[0];if(!f||!gmAccess())return;
- try{restoreBattle(JSON.parse(await f.text()));saveBattleLocal()}
- catch(e){alert("Файл боя повреждён или имеет неверный формат. Текущий бой сохранён.")}
- finally{ev.target.value=""}
-});
-$("#export").addEventListener("click",()=>{
- const c=document.createElement("canvas");c.width=state.cols*state.cell;c.height=state.rows*state.cell;const x=c.getContext("2d");
- x.fillStyle="#2a2d2c";x.fillRect(0,0,c.width,c.height);
- if($("#gridToggle").checked){x.strokeStyle="rgba(240,240,230,.18)";x.lineWidth=1;for(let i=0;i<=state.cols;i++){x.beginPath();x.moveTo(i*state.cell,0);x.lineTo(i*state.cell,c.height);x.stroke()}for(let j=0;j<=state.rows;j++){x.beginPath();x.moveTo(0,j*state.cell);x.lineTo(c.width,j*state.cell);x.stroke()}}
- for(const it of state.items){x.save();x.translate(it.x+it.w/2,it.y+it.h/2);x.rotate((it.r||0)*Math.PI/180);
-   if(it.type==="token"){x.fillStyle=(it.conditions?.dead||it.conditions?.unconscious)?"#000":"#53616e";x.strokeStyle="#ddd6c9";x.lineWidth=3;x.beginPath();x.arc(0,0,Math.min(it.w,it.h)/2,0,Math.PI*2);x.fill();x.stroke();
-   if(it.portrait&&!it.conditions?.dead&&!it.conditions?.unconscious){const img=[...map.querySelectorAll(".entity")].find(e=>e.dataset.id===it.id)?.querySelector("img");if(img?.complete&&img.naturalWidth){x.save();x.beginPath();x.arc(0,0,Math.min(it.w,it.h)/2-3,0,Math.PI*2);x.clip();x.drawImage(img,-it.w/2,-it.h/2,it.w,it.h);x.restore()}}
-   }
-   else if(it.type==="cone"){x.fillStyle="rgba(225,105,38,.35)";x.beginPath();x.moveTo(-it.w/2,0);x.lineTo(it.w/2,-it.h/2);x.lineTo(it.w/2,it.h/2);x.closePath();x.fill()}
-   else {x.fillStyle=it.type==="wall"?"#121417":it.type==="door"?"#6b452c":it.type==="fog"?"rgba(3,4,5,.88)":it.type==="blast"?"rgba(225,105,38,.28)":"#594936";if(it.type==="blast"){x.beginPath();x.ellipse(0,0,it.w/2,it.h/2,0,0,Math.PI*2);x.fill()}else x.fillRect(-it.w/2,-it.h/2,it.w,it.h)}
-   x.restore();
- }
- const a=document.createElement("a");a.href=c.toDataURL("image/png");a.download="swade-map.png";a.click();
-});
-setTimeout(()=>$("#toast").classList.add("hidden"),3500);
-render();
-
-// ---- Savage Worlds dice roller ----
-const dicePanel=$("#dicePanel"), diceBig=$("#diceBig"), diceSub=$("#diceSub"), diceHistory=$("#diceHistory");
-$("#diceToggle").addEventListener("click",()=>dicePanel.classList.toggle("hidden"));
-
-function rollOne(sides, ace){
- let total=0, rolls=[], r;
- do { r=1+Math.floor(Math.random()*sides); rolls.push(r); total+=r; } while(ace && r===sides);
- return {total,rolls,sides};
-}
-function rollText(r){return "d"+r.sides+": "+r.rolls.join(" + ")+" = "+r.total}
-function outcome(total){
- if(total<4)return {text:"Провал",cls:"fail"};
- const raises=Math.floor((total-4)/4);
- return raises ? {text:"Успех + подъёмов: "+raises,cls:"raise"} : {text:"Успех",cls:"success"};
-}
-function addHist(title, detail, cls=""){
- const d=document.createElement("div"); d.className="hist "+cls;
- d.innerHTML="<b>"+title+"</b><br>"+detail; diceHistory.prepend(d);
- while(diceHistory.children.length>20)diceHistory.lastChild.remove();
-}
-document.querySelectorAll(".dieBtn").forEach(b=>b.addEventListener("click",()=>{
- const sides=Number(b.dataset.die),ace=$("#acing").checked,r=rollOne(sides,ace),mod=diceModifier(),total=r.total+mod;
- diceBig.textContent=total; diceSub.textContent=rollText(r)+(mod?` ${mod>=0?"+":""}${mod}`:"");
- diceSub.textContent+=" | "+diceModifierDetail();
- addHist("Обычный бросок: "+total,escapeHtml(diceSub.textContent));
-}));
-$("#traitRoll").addEventListener("click",()=>{
- const sides=Number($("#traitDie").value),mod=diceModifier(),ace=$("#acing").checked;
- const trait=rollOne(sides,ace),useWild=$("#wildDie").checked,wild=useWild?rollOne(6,ace):null;
- const traitTotal=trait.total+mod,wildTotal=wild?wild.total+mod:-Infinity,total=Math.max(traitTotal,wildTotal);
- const oc=outcome(total);
- diceBig.textContent=total;
- let detail=rollText(trait)+(mod?` ${mod>=0?"+":""}${mod}`:"");
- if(wild)detail+=" | Wild "+rollText(wild)+(mod?` ${mod>=0?"+":""}${mod}`:"");
- detail+=" → "+oc.text+" | "+diceModifierDetail();
- diceSub.textContent=detail;
- addHist("Trait Roll: "+total,escapeHtml(detail),oc.cls);
-});
-$("#clearDice").addEventListener("click",()=>{diceHistory.innerHTML="";diceBig.textContent="—";diceSub.textContent="История очищена"});
-
-
-// ---- Multiplayer client ----
-const mpPanel=$("#mpPanel"), netState=$("#netState"), playersBox=$("#players");
-let socket=null, room="", myClientId="", isGM=false, applyingRemote=false, syncTimer=null;
-
-$("#mpToggle").addEventListener("click",()=>mpPanel.classList.toggle("hidden"));
-
-function makeRoomCode(){
- const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s="";
- for(let i=0;i<6;i++)s+=chars[Math.floor(Math.random()*chars.length)];
- return s;
-}
-function applyRoomBattle(){
- const d=state.battleSession;if(!d)return;
- initDeck=d.initDeck||[];initDrawn=d.initDrawn||[];initNameIndex=d.initNameIndex||0;initTurnIndex=d.initTurnIndex??-1;combatRound=d.combatRound||1;heldTurns=d.heldTurns||[];interruptedTurnStack=d.interruptedTurnStack||[];jokerUsed=d.jokerUsed||[];
- initRenderRows();initStatus();initShow(initCurrent()?.card||null);
-}
-let roomPlayers=[],pendingRoom="",reconnectTimer=null,reconnectAttempt=0;
-function resumeInfo(code){try{return JSON.parse(localStorage.getItem("swade-room-"+code)||"null")}catch{return null}}
-function scheduleReconnect(code){clearTimeout(reconnectTimer);const delay=Math.min(15000,1000*2**Math.min(reconnectAttempt++,4));netState.textContent="Связь потеряна · переподключение…";reconnectTimer=setTimeout(()=>connectRoom(code),delay)}
-function requestRoom(code){
- code=String(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
- if(!code){$("#roomNotice").textContent="Введите код комнаты.";return}
- const saved=resumeInfo(code);if(saved?.token){$("#playerName").value=saved.name;connectRoom(code);return}
- pendingRoom=code;$("#joinName").value=$("#playerName").value.trim();$("#nameError").textContent="";$("#nameDialog").showModal();$("#joinName").focus();
-}
-$("#nameForm").addEventListener("submit",e=>{e.preventDefault();const name=$("#joinName").value.trim();if(!name){$("#nameError").textContent="Введите имя.";return}$("#playerName").value=name;$("#nameDialog").close();connectRoom(pendingRoom)});
-$("#cancelJoin").addEventListener("click",()=>$("#nameDialog").close());
-$("#transferGM").addEventListener("click",()=>{if(!isGM||socket?.readyState!==1)return;const targetId=$("#nextGM").value;if(targetId)socket.send(JSON.stringify({type:"transferGM",targetId}))});
-function renderPlayers(list){
- roomPlayers=list;
- const me=list.find(p=>p.id===myClientId);isGM=!!me?.isGM;window.networkIsGM=isGM;refreshRole();
- netState.textContent=`Комната ${room}${isGM?" · GM":" · Игрок"}`;
- playersBox.replaceChildren();for(const p of list){const row=document.createElement("div");row.textContent=`${p.online===false?"○":"●"} ${p.name}${p.id===myClientId?" (вы)":""} — ${p.isGM?"GM":"Игрок"}${p.online===false?" · нет связи":""}`;playersBox.appendChild(row);
- if(isGM){const sel=document.createElement("select");sel.add(new Option("Без токена",""));for(const t of state.items.filter(t=>t.type==="token"))sel.add(new Option(t.name||"Токен",t.id));sel.value=p.tokenId||"";sel.setAttribute("aria-label","Токен: "+p.name);sel.onchange=()=>socket.send(JSON.stringify({type:"assignToken",clientId:p.id,tokenId:sel.value}));row.appendChild(sel)}
- }
- $("#nextGM").replaceChildren();for(const p of list.filter(p=>p.id!==myClientId&&p.online!==false)){const option=document.createElement("option");option.value=p.id;option.textContent=p.name;$("#nextGM").appendChild(option)}
- $("#transferBox").classList.toggle("hidden",!isGM);$("#transferGM").disabled=!$("#nextGM").options.length;
-}
-function connectRoom(code){
- clearTimeout(reconnectTimer);
- if(location.protocol==="file:"){$("#roomNotice").textContent="Для комнаты откройте HTML через сервер из комплекта. Локальный файл доступен для одиночной проверки.";return}
- if(!$("#playerName").value.trim())return requestRoom(code);
- code=(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
- if(!code)return alert("Введите код комнаты.");
- room=code; $("#roomCode").value=room;
- if(socket){socket.onclose=null;socket.onmessage=null;socket.close()}
- const proto=location.protocol==="https:"?"wss":"ws";
- socket=new WebSocket(`${proto}://${location.host}/ws`);
- netState.textContent="Подключение…";
- socket.onopen=()=>{
-   socket.send(JSON.stringify({type:"join",room,name:$("#playerName").value.trim()||"Игрок",resumeToken:resumeInfo(room)?.token}));
- };
- socket.onmessage=ev=>{
-   let msg; try{msg=JSON.parse(ev.data)}catch{return}
-   if(msg.type==="welcome"){
-     reconnectAttempt=0;try{localStorage.setItem("swade-room-"+room,JSON.stringify({name:msg.name,token:msg.resumeToken}));const u=new URL(location.href);u.searchParams.set("room",room);window.history.replaceState(null,"",u)}catch{}
-     $("#playerName").value=msg.name||$("#playerName").value;$("#roomNotice").textContent=msg.resumed?"Подключение восстановлено. Ваш токен сохранён.":"";
-     myClientId=msg.clientId;isGM=!!msg.isGM;window.networkRoleActive=true;window.networkIsGM=isGM;refreshRole();netState.textContent=`Комната ${room}${isGM?" · GM":""}`;
-     $("#copyInvite").disabled=false;
-     if(!msg.state&&isGM)broadcastState();if(msg.state){applyingRemote=true;const changedScene=state.activeSceneId!==msg.state.activeSceneId;state=msg.state;if(changedScene){selected=null;drag=null;history=[];future=[];panX=35;panY=35;zoom=1}applyRoomBattle();syncInputs();render();applyingRemote=false}
-   } else if(msg.type==="state" && msg.clientId!==myClientId){
-     applyingRemote=true;const changedScene=state.activeSceneId!==msg.state.activeSceneId;state=msg.state;if(changedScene){selected=null;drag=null;history=[];future=[];panX=35;panY=35;zoom=1}applyRoomBattle();syncInputs();render();applyingRemote=false;
-   } else if(msg.type==="players"){
-     renderPlayers(msg.players);
-   } else if(msg.type==="tokenMoved"){const t=state.items.find(t=>t.id===msg.tokenId);if(t){applyingRemote=true;t.x=msg.x;t.y=msg.y;render();applyingRemote=false}
-   } else if(msg.type==="gmTransferred"){ $("#roomNotice").textContent="Новый GM: "+msg.name;
-   } else if(msg.type==="dice" && msg.clientId!==myClientId){
-     dicePanel.classList.remove("hidden");diceBig.textContent=msg.total;diceSub.textContent=msg.detail;
-     applyingRemote=true;addHist(escapeHtml(msg.name)+" — "+escapeHtml(msg.title),escapeHtml(msg.detail),msg.cls||"");applyingRemote=false;
-   } else if(msg.type==="error"){alert(msg.message)}
- };
- socket.onclose=ev=>{refreshRole();netState.textContent="Офлайн";playersBox.textContent="Соединение закрыто.";$("#transferBox").classList.add("hidden");$("#copyInvite").disabled=true;if(ev.code===4001){netState.textContent="Комната открыта в другой вкладке";return}scheduleReconnect(code);};
- socket.onerror=()=>{netState.textContent="Ошибка сети"};
-}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function broadcastState(){
- if(applyingRemote||!socket||socket.readyState!==1||!room||!isGM)return;
- clearTimeout(syncTimer);syncTimer=setTimeout(()=>{if(!isGM||socket.readyState!==1)return;const owner=roomPlayers.find(p=>p.tokenId===initCurrent()?.tokenId);socket.send(JSON.stringify({type:"setTurn",clientId:owner?.id||null}));state.battleSession={initDeck,initDrawn,initNameIndex,initTurnIndex,combatRound,heldTurns,interruptedTurnStack,jokerUsed};captureScene();socket.send(JSON.stringify({type:"state",room,state}));},45);
-}
-function broadcastDice(title,total,detail,cls=""){
- if(socket&&socket.readyState===1&&room)socket.send(JSON.stringify({type:"dice",room,title,total,detail,cls}));
-}
-$("#createRoom").addEventListener("click",()=>requestRoom(makeRoomCode()));
-$("#joinRoom").addEventListener("click",()=>requestRoom($("#roomCode").value));
-$("#copyInvite").addEventListener("click",async()=>{
- const u=new URL(location.href);u.searchParams.set("room",room);
- try{await navigator.clipboard.writeText(u.toString());$("#copyInvite").textContent="Ссылка скопирована";setTimeout(()=>$("#copyInvite").textContent="Скопировать приглашение",1500)}
- catch{prompt("Скопируйте ссылку:",u.toString())}
-});
-
-// Hook state-changing render calls into network synchronization.
-function refreshRole(){
- $("#imageUploadBtn").classList.toggle("hidden",!gmAccess());$("#imageUploadBtn").disabled=!gmAccess();
- if(!gmAccess()&&$("#sceneDialog").open)$("#sceneDialog").close();
- refreshScenes();
- const player=!gmAccess();document.body.classList.toggle("player-sidebar",player);
- if(player&&!["select","pan"].includes(tool)){tool="select";drag=null;document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("active",b.dataset.tool==="select"));stage.style.cursor="default";}
-
- $("#localRoleLabel").classList.toggle("hidden",!!window.networkRoleActive);
- for(const id of ["undo","redo","load","save","duplicateToken"])$("#"+id).disabled=!gmAccess();
- refreshExtras();
-}
-$("#localRole").addEventListener("change",refreshRole);
-$("#bennyMinus").addEventListener("click",()=>changeBenny(-1));
+ } if(it.type==="prop")…7910 tokens truncated…);
 $("#bennyPlus").addEventListener("click",()=>changeBenny(1));
 $("#gmNotes").addEventListener("change",()=>{const t=selectedToken();if(!t||!gmAccess())return;gmNotes[t.id]=$("#gmNotes").value;saveBattleLocal()});
 $("#journalToggle").addEventListener("click",()=>{$("#battleJournal").classList.toggle("hidden");renderJournal()});
+$("#journalFilter").addEventListener("change",renderJournal);
+function makePanelMovable(panel,handle){if(!panel||!handle)return;handle.classList.add("panelDragHandle");handle.title="Перетащите окно";handle.addEventListener("pointerdown",e=>{if(e.target.closest("button,input,select"))return;const r=panel.getBoundingClientRect(),dx=e.clientX-r.left,dy=e.clientY-r.top;panel.style.position="fixed";panel.style.left=r.left+"px";panel.style.top=r.top+"px";panel.style.right="auto";panel.style.bottom="auto";const move=x=>{panel.style.left=Math.max(0,Math.min(innerWidth-r.width,x.clientX-dx))+"px";panel.style.top=Math.max(0,Math.min(innerHeight-r.height,x.clientY-dy))+"px"};const up=()=>{removeEventListener("pointermove",move);removeEventListener("pointerup",up)};addEventListener("pointermove",move);addEventListener("pointerup",up);e.preventDefault()})}
+for(const selector of ["#dicePanel h2","#mpPanel h2","#initiativeDraft h2","#battleJournal h3","#conditionFloat > div:first-child"])makePanelMovable(document.querySelector(selector)?.closest(".dicePanel,.mpPanel,.initiativeDraft,#battleJournal,#conditionFloat"),document.querySelector(selector));
 $("#journalClose").addEventListener("click",()=>$("#battleJournal").classList.add("hidden"));
 const originalRender=render;
 render=function(){
@@ -662,6 +403,7 @@ function normalizeTokenCondition(t){
  t.wounds=Math.max(0,Math.min(3,Number(t.wounds)||0));
  t.shaken=!!t.shaken;
  if(!t.conditions||typeof t.conditions!=="object")t.conditions={};
+ if(!t.conditionDurations||typeof t.conditionDurations!=="object")t.conditionDurations={};
  for(const k of ["fatigued","prone","bound","distracted","vulnerable","stunned","dead","unconscious"])t.conditions[k]=!!t.conditions[k];
 }
 function refreshTokenConditions(){
@@ -714,7 +456,7 @@ function updateSelectedCondition(kind,delta){
  remember();normalizeTokenCondition(t);
  if(kind==="wounds")t.wounds=Math.max(0,Math.min(3,t.wounds+delta));
  if(kind==="shaken")t.shaken=!t.shaken;
- if(kind==="condition"&&delta)t.conditions[delta]=!t.conditions[delta];
+ if(kind==="condition"&&delta){t.conditions[delta]=!t.conditions[delta];const rounds=Number($("#conditionDuration").value)||0;if(t.conditions[delta]&&rounds)t.conditionDurations[delta]=rounds;else delete t.conditionDurations[delta]}
  render();refreshTokenConditions();renderTokenConditionBadges();
  const labels={dead:"Убит",unconscious:"Без сознания",fatigued:"Усталость",prone:"Сбит с ног",bound:"Связан",distracted:"Отвлечён",vulnerable:"Уязвим",stunned:"Оглушён"};
  journal(`${t.name||"Токен"}: `+(kind==="wounds"?"ранения — "+t.wounds:kind==="shaken"?"шок "+(t.shaken?"включён":"снят"):(labels[delta]||delta)+" "+(t.conditions[delta]?"включено":"снято")));
@@ -723,7 +465,8 @@ let initDeck=[],initDrawn=[],initNameIndex=0,initTurnIndex=-1,combatRound=1,held
 const initRankPower={"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"J":11,"Q":12,"K":13,"A":14};
 const initSuitPower={"♣":1,"♠":2,"♦":3,"♥":4};
 function initPower(c){
- if(c.joker)return 100;
+ // Joker takes the final ordinary turn, but can still use «Перехватить инициативу».
+ if(c.joker)return 0;
  return initRankPower[c.rank]*10+initSuitPower[c.suit];
 }
 function initTurnOrder(includeHeld=true){
@@ -733,10 +476,10 @@ function initTurnOrder(includeHeld=true){
 }
 
 function isJokerCard(card){return !!(card&&typeof card==="object"&&card.joker)||/JOKER|ДЖОКЕР|🃏/i.test(String(card||""))}
-function diceModifier(){return (Number($("#diceMod").value)||0)+initiativeRollModifier(initCurrent()?.card)}
+function diceModifier(){return (Number($("#diceMod").value)||0)+quickModTotal+initiativeRollModifier(initCurrent()?.card)}
 function diceModifierDetail(){
  const cur=initCurrent(),manual=Number($("#diceMod").value)||0;
- return (cur?cur.name+" · "+initLabel(cur.card):"Нет активного хода")+" · масть "+initiativeModifierText(cur?.card)+" · вручную "+(manual>=0?"+":"")+manual;
+ return (cur?cur.name+" · "+initLabel(cur.card):"Нет активного хода")+" · масть "+initiativeModifierText(cur?.card)+" · быстрые "+(quickModTotal>=0?"+":"")+quickModTotal+" · вручную "+(manual>=0?"+":"")+manual;
 }
 function refreshDiceModifier(){ $("#diceInitiativeHint").textContent=diceModifierDetail() }
 $("#diceMod").addEventListener("input",refreshDiceModifier);
@@ -805,13 +548,19 @@ function initShow(c){
  if(c.suit==="♥"||c.suit==="♦")el.classList.add("red");
  $("#initA").innerHTML=$("#initB").innerHTML=c.rank+"<br>"+c.suit;$("#initSuit").textContent=c.suit;
 }
+let announcedTurn="",turnAlertTimer=null;
+function announcePlayerTurn(){
+ const cur=initCurrent(),own=window.networkRoleActive&&!isGM&&cur?.tokenId&&roomPlayers.some(p=>p.id===myClientId&&p.tokenId===cur.tokenId),key=own?`${combatRound}:${cur.tokenId}:${cur._i}`:"";
+ if(!own||key===announcedTurn)return;announcedTurn=key;const alert=$("#turnAlert");alert.textContent="Ваш ход: "+(cur.name||"ваш персонаж");alert.classList.remove("hidden");clearTimeout(turnAlertTimer);turnAlertTimer=setTimeout(()=>alert.classList.add("hidden"),7000);
+ try{const audio=new (window.AudioContext||window.webkitAudioContext)(),osc=audio.createOscillator(),gain=audio.createGain();osc.frequency.value=740;gain.gain.setValueAtTime(.07,audio.currentTime);osc.connect(gain).connect(audio.destination);osc.start();osc.stop(audio.currentTime+.14)}catch{}
+}
 function initRenderRows(){
  const order=initTurnOrder(),cur=initCurrent();
  $("#initRows").innerHTML=order.length?order.map(x=>{
    const active=cur&&cur._i===x._i,held=heldTurns.includes(x._i);
    return `<div class="initRow ${active?"currentTurn":""} ${held?"heldTurn":""} ${isJokerCard(x.card)?"jokerOwner":""} ${active&&isJokerCard(x.card)?"jokerTurn":""}"><span>${x.tokenId?"● ":""}${x.name}${active?'<span class="initTurnTag">← ХОД</span>':""}${held?'<span class="initTurnTag">⏸ УДЕРЖИВАЕТ</span>':""}</span><span class="initVal ${(x.card.suit==="♥"||x.card.suit==="♦")?"initRed":""}">${initLabel(x.card)}</span></div>`;
  }).join(""):'<div class="initRow"><span>Карты ещё не вытягивались</span><span>—</span></div>';
- combatRefreshActiveToken();refreshJokerControls();
+ combatRefreshActiveToken();refreshJokerControls();announcePlayerTurn();
 }
 function initStatus(){$("#initCount").textContent=`В колоде: ${initDeck.length} · сейчас тянет: ${initNames[initNameIndex]}`}
 function initFresh(){
@@ -901,8 +650,9 @@ $("#initEndTurn").addEventListener("click",()=>{if(window.networkRoleActive&&!is
 $("#initNpcDeal").addEventListener("click",()=>{if(window.networkRoleActive&&!isGM)return;
  const tokens=initNpcCandidates();
  if(!tokens.length)return alert("На карте нет токенов.");
- for(const token of tokens){
+ const dealtGroups=new Set();for(const token of tokens){
    if(!canDrawInitiative(token))continue;
+   const group=tokenProfile(token).group?.trim();if(group){if(dealtGroups.has(group))continue;dealtGroups.add(group);initDrawn=initDrawn.filter(x=>x.group!==group);const card=initTake(group,null);if(card)initDrawn[initDrawn.length-1].group=group;continue}
    initDrawn=initDrawn.filter(x=>x.tokenId!==token.id);
    if(!initTake(token.name||"PC",token.id))break;
  }
@@ -936,7 +686,7 @@ document.querySelector("#initHoldTurn")?.addEventListener("click",()=>{if(window
  holdingMovement=true;try{$("#initEndTurn").click()}finally{holdingMovement=false}
 });
 document.querySelector("#initNewRound")?.addEventListener("click",()=>{if(window.networkRoleActive&&!isGM)return;
- combatRound++;for(const t of state.items)t.movedCells=0;journal("Начат новый раунд");heldTurns=[];interruptedTurnStack=[];jokerUsed=[];initTurnIndex=-1;initDrawn=[];
+ combatRound++;for(const t of state.items){t.movedCells=0;if(t.conditionDurations)for(const k of Object.keys(t.conditionDurations)){if(--t.conditionDurations[k]<=0){delete t.conditionDurations[k];if(t.conditions)t.conditions[k]=false;journal(`${t.name||"Токен"}: состояние «${k}» закончилось`)}}}journal("Начат новый раунд");heldTurns=[];interruptedTurnStack=[];jokerUsed=[];initTurnIndex=-1;initDrawn=[];
  initFresh();$("#initEndTurn").textContent="✓ Завершить ход";
  const r=document.querySelector("#combatRound");if(r)r.textContent=combatRound;
 });
@@ -1118,7 +868,12 @@ $("#sceneForm").addEventListener("submit",async e=>{
  }catch(err){$("#sceneError").textContent="Не удалось загрузить сцену. Проверьте изображение и повторите."}finally{$("#sceneSubmit").disabled=false}
 });
 $("#sceneRename").addEventListener("click",()=>{if(!gmAccess())return;captureScene();const s=state.scenes.find(s=>s.id===state.activeSceneId);const name=prompt("Название сцены",s.name)?.trim();if(name){s.name=name.slice(0,80);render();journal("Сцена переименована: "+s.name)}});
+const sceneNotesButton=document.createElement("button");sceneNotesButton.textContent="☰";sceneNotesButton.title="Заметки сцены";$("#sceneRename").after(sceneNotesButton);sceneNotesButton.addEventListener("click",()=>{if(!gmAccess())return;captureScene();const s=state.scenes.find(s=>s.id===state.activeSceneId),notes=prompt("Заметки GM для сцены",s.notes||"");if(notes!==null){s.notes=notes.slice(0,2000);saveBattleLocal();journal("Обновлены заметки сцены: "+s.name)}});
+const snapshotButton=document.createElement("button");snapshotButton.textContent="◷";snapshotButton.title="Снимки текущей сцены";sceneNotesButton.after(snapshotButton);snapshotButton.addEventListener("click",()=>{if(!gmAccess())return;captureScene();const s=state.scenes.find(s=>s.id===state.activeSceneId);s.snapshots=s.snapshots||[];const choice=prompt("1 — сохранить снимок, 2 — восстановить последний", "1");if(choice==="1"){s.snapshots.push({time:new Date().toISOString(),map:JSON.parse(JSON.stringify(s.map))});if(s.snapshots.length>10)s.snapshots.shift();journal("Сохранён снимок сцены: "+s.name)}else if(choice==="2"&&s.snapshots.length){const snap=s.snapshots[s.snapshots.length-1];const scenes=state.scenes,log=state.battleLog||[];state={...JSON.parse(JSON.stringify(snap.map)),scenes,activeSceneId:s.id,battleLog:log};applyRoomBattle();render();journal("Восстановлен последний снимок сцены: "+s.name)}});
+const reinforcementButton=document.createElement("button");reinforcementButton.textContent="+×";reinforcementButton.title="Добавить подкрепления по выбранному токену";snapshotButton.after(reinforcementButton);reinforcementButton.addEventListener("click",()=>{if(!gmAccess()||selectedToken()==null)return;const n=Math.max(1,Math.min(12,Number(prompt("Сколько подкреплений добавить?","3"))||0));const name=selectedToken().name||"Токен";for(let i=0;i<n;i++)duplicateToken();journal(`Подкрепление: ${name} ×${n}`)});
 $("#tokenVisibility").addEventListener("click",()=>{const t=selectedToken();if(!t||!gmAccess())return;remember();t.hidden=!t.hidden;render();journal(`${t.name||"Токен"}: ${t.hidden?"скрыт от игроков":"показан игрокам"}`)});
+$("#applyTemplate").addEventListener("click",()=>{const t=selectedToken(),preset=tokenTemplates[$("#tokenTemplate").value];if(!t||!gmAccess()||!preset)return;remember();t.name=preset.name;t.profile={type:preset.type,parry:preset.parry,toughness:preset.toughness,pace:preset.pace,notes:"",wildCard:preset.wildCard};render();journal(`Шаблон «${preset.type}» применён к ${t.name}`)});
+for(const id of ["profileType","profileGroup","profileParry","profileToughness","profilePace","resourceAmmo","resourcePower","profileNotes"])$("#"+id).addEventListener("change",()=>{const t=selectedToken();if(!t||!gmAccess())return;remember();t.profile={...tokenProfile(t),type:$("#profileType").value.trim().slice(0,40),group:$("#profileGroup").value.trim().slice(0,40),parry:Math.max(0,Number($("#profileParry").value)||0),toughness:Math.max(0,Number($("#profileToughness").value)||0),pace:Math.max(0,Number($("#profilePace").value)||0),ammo:Math.max(0,Number($("#resourceAmmo").value)||0),power:Math.max(0,Number($("#resourcePower").value)||0),notes:$("#profileNotes").value.trim().slice(0,300)};render();journal(`Карточка обновлена: ${t.name||"Токен"}`)});
 $("#portraitUpload").addEventListener("click",()=>{if(canControlToken(selectedToken()))$("#portraitFile").click()});
 $("#portraitRemove").addEventListener("click",()=>{const t=selectedToken();if(!canControlToken(t)||!t?.portrait)return;if(window.networkRoleActive&&!isGM){sendTokenValues(t,{portrait:null});return}remember();delete t.portrait;render();journal("Портрет убран: "+(t.name||"Токен"))});
 $("#portraitFile").addEventListener("change",async e=>{
