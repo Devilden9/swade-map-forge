@@ -13,6 +13,7 @@ const dataDir=process.env.ROOM_DATA_DIR||process.env.RAILWAY_VOLUME_MOUNT_PATH||
 if(process.env.RAILWAY_ENVIRONMENT_ID&&!process.env.ROOM_DATA_DIR&&!process.env.RAILWAY_VOLUME_MOUNT_PATH)throw Error("Persistent volume is required for Railway deployment");
 const roomStore=new RoomStore(dataDir);
 const rooms=roomStore.load();
+const MAX_ROOM_MESSAGE_BYTES=12*1024*1024;
 let shuttingDown=false;
 console.log(`Restored ${rooms.size} room(s) from persistent storage`);
 function getRoom(code){
@@ -22,7 +23,10 @@ function getRoom(code){
 function visibleState(room,viewerId){
  if(viewerId===room.gmId)return room.state;
  if(!room.state)return null;
- const copy=JSON.parse(JSON.stringify(room.state));
+ // Copy only the mutable structures we filter. Map images can be large data URLs;
+ // JSON cloning the entire state for every player temporarily duplicates them and can
+ // exhaust the small production container during a join.
+ const copy={...room.state,items:[...(room.state.items||[])],scenes:(room.state.scenes||[]).map(s=>({...s,map:s.map?{...s.map,items:[...(s.map.items||[])]}:s.map})),battleLog:[...(room.state.battleLog||[])]};
  const hiddenIds=new Set(),hiddenNames=new Set();
  for(const m of [copy,...(copy.scenes||[]).map(s=>s.map)])for(const t of m?.items||[])if(t.type==="token"&&t.hidden){hiddenIds.add(t.id);if(t.name)hiddenNames.add(t.name)}
  function filterMap(m){
@@ -83,6 +87,7 @@ wss.on("connection", ws=>{
   let clientId=crypto.randomUUID();
   let joinedCode=null;
   ws.on("message", raw=>{
+    if(raw.length>MAX_ROOM_MESSAGE_BYTES){if(ws.readyState===1)ws.send(JSON.stringify({type:"error",message:"Карта комнаты слишком велика. Загрузите более компактное изображение."}));return}
     let msg; try{msg=JSON.parse(raw)}catch{return}
     if(shuttingDown||!msg||typeof msg!=="object")return;
     try{
