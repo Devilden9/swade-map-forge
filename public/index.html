@@ -955,11 +955,24 @@ renderTokenConditionBadges();
 
 
 // --- Map image upload (local draft) ---
+async function compactMapImage(file){
+  const source=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(Error("Не удалось прочитать файл."));r.readAsDataURL(file)});
+  const image=new Image();image.src=source;await image.decode();
+  let width=image.naturalWidth,height=image.naturalHeight,quality=.84,data=source;
+  for(let pass=0;pass<3;pass++){
+    const scale=Math.min(1,2048/Math.max(width,height));width=Math.max(1,Math.round(width*scale));height=Math.max(1,Math.round(height*scale));
+    const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;canvas.getContext("2d").drawImage(image,0,0,width,height);
+    data=canvas.toDataURL("image/webp",quality);if(data.length<=2_000_000)break;
+    width=Math.round(width*.72);height=Math.round(height*.72);quality=.72;
+  }
+  if(data.length>2_000_000)throw Error("Изображение слишком велико даже после сжатия.");
+  return {data,width,height};
+}
 const imageUploadBtn=document.querySelector("#imageUploadBtn");
 const imageFile=document.querySelector("#imageFile");
 if(imageUploadBtn && imageFile){
   imageUploadBtn.addEventListener("click",()=>{if(gmAccess())imageFile.click()});
-  imageFile.addEventListener("change",()=>{
+  imageFile.addEventListener("change",async()=>{
     if(!gmAccess()){imageFile.value="";return}
     const uploadScene=state.activeSceneId;const file=imageFile.files && imageFile.files[0];
     if(!file)return;
@@ -968,28 +981,20 @@ if(imageUploadBtn && imageFile){
       imageFile.value="";
       return;
     }
-    const reader=new FileReader();
-    reader.onload=()=>{
-      const data=String(reader.result||"");
-      const probe=new Image();
-      probe.onload=()=>{
-        if(!gmAccess()||state.activeSceneId!==uploadScene){imageFile.value="";return}
+    try{
+      const packed=await compactMapImage(file);
+      if(!gmAccess()||state.activeSceneId!==uploadScene){imageFile.value="";return}
         remember();
-        state.mapImage=data;
+        state.mapImage=packed.data;
         // Keep current width, adapt map height to the image aspect ratio.
-        if(probe.naturalWidth && probe.naturalHeight && state.cols){
-          state.rows=Math.max(1,Math.round(state.cols*probe.naturalHeight/probe.naturalWidth));
+        if(packed.width && packed.height && state.cols){
+          state.rows=Math.max(1,Math.round(state.cols*packed.height/packed.width));
         }
         state.mapImageWidth=state.cols*state.cell;
         state.mapImageHeight=state.rows*state.cell;
         syncInputs();render();
         imageFile.value="";
-      };
-      probe.onerror=()=>{alert("Браузер не смог открыть это изображение.");imageFile.value=""};
-      probe.src=data;
-    };
-    reader.onerror=()=>{alert("Не удалось прочитать файл.");imageFile.value=""};
-    reader.readAsDataURL(file);
+    }catch(err){alert(err.message||"Не удалось обработать изображение.");imageFile.value=""}
   });
 }
 
@@ -1105,7 +1110,7 @@ $("#sceneForm").addEventListener("submit",async e=>{
  const file=$("#newSceneImage").files[0];$("#sceneSubmit").disabled=true;
  try{
   let data=null,ratio=22/30;
-  if(file){if(!file.type.startsWith("image/"))throw Error("Выберите изображение карты.");data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(Error("Не удалось прочитать файл."));r.readAsDataURL(file)});const img=new Image();img.src=data;await img.decode();ratio=img.naturalHeight/img.naturalWidth;}
+  if(file){if(!file.type.startsWith("image/"))throw Error("Выберите изображение карты.");const packed=await compactMapImage(file);data=packed.data;ratio=packed.height/packed.width;}
   if(!gmAccess()||!$("#sceneDialog").open)return;
   captureScene();const id=uid(),rows=Math.max(1,Math.min(100,Math.round(30*ratio)));
   const empty={cols:30,rows,cell:48,items:[],mapImage:data,mapImageWidth:1440,mapImageHeight:rows*48,battleSession:{initDeck:[],initDrawn:[],initNameIndex:0,initTurnIndex:-1,combatRound:1,heldTurns:[],interruptedTurnStack:[],jokerUsed:[]}};
