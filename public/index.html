@@ -118,12 +118,12 @@ body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="
 </style>
 </head>
 <body>
-<dialog id="nameDialog"><form id="nameForm"><h3>Как вас зовут?</h3><p>Это имя увидят участники комнаты.</p><label for="joinName">Ваше имя</label><input id="joinName" type="text" maxlength="32" required autocomplete="nickname"><p id="nameError" class="hint" role="status"></p><button type="submit">Войти в комнату</button> <button id="cancelJoin" type="button">Отмена</button></form></dialog><div id="app">
+<dialog id="nameDialog"><form id="nameForm"><h3>Как вас зовут?</h3><p>Это имя увидят участники комнаты.</p><label for="joinName">Ваше имя</label><input id="joinName" type="text" maxlength="32" required autocomplete="nickname"><p id="nameError" class="hint" role="status"></p><button type="submit">Войти в комнату</button> <button id="cancelJoin" type="button">Отмена</button></form></dialog><dialog id="sceneDialog"><form id="sceneForm"><h3>Новая сцена</h3><label for="newSceneName">Название</label><input id="newSceneName" type="text" maxlength="80" required><label for="newSceneImage">Карта сцены (необязательно)</label><input id="newSceneImage" type="file" accept="image/*"><p id="sceneError" class="hint" role="status"></p><button id="sceneSubmit" type="submit">Загрузить сцену</button> <button id="sceneCancel" type="button">Отмена</button></form></dialog><div id="app">
 <header class="top">
  <div class="brand">SAVAGE WORLDS · MAP FORGE v2</div>
  <button id="undo">↶ Undo</button><button id="redo">↷ Redo</button>
  <button id="save">Сохранить бой</button><button id="load">Загрузить</button><input id="file" type="file" accept=".json,application/json" hidden>
- <button id="export">Экспорт PNG</button><button id="imageUploadBtn">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="initiativeToggle">🃏 Инициатива</button><button id="mpToggle">🌐 Multiplayer</button><div class="sceneControls"><label for="sceneSelect" style="margin:0">Сцена</label><select id="sceneSelect"></select><button id="sceneAdd" title="Создать пустую сцену">+ Сцена</button><button id="sceneRename" title="Название сцены">✎</button></div><button id="journalToggle">Журнал боя</button><label id="localRoleLabel" style="margin:0">Проверка роли <select id="localRole" style="width:auto"><option value="gm">GM</option><option value="player">Игрок</option></select></label><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
+ <button id="export">Экспорт PNG</button><button id="imageUploadBtn">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="initiativeToggle">🃏 Инициатива</button><button id="mpToggle">🌐 Multiplayer</button><div class="sceneControls"><label for="sceneSelect" style="margin:0">Сцена</label><select id="sceneSelect"></select><button id="sceneAdd" title="Создать сцену и загрузить карту">+ Сцена</button><button id="sceneRename" title="Название сцены">✎</button></div><button id="journalToggle">Журнал боя</button><label id="localRoleLabel" style="margin:0">Проверка роли <select id="localRole" style="width:auto"><option value="gm">GM</option><option value="player">Игрок</option></select></label><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
 </header>
 <div class="workspace">
 <aside class="left">
@@ -288,8 +288,11 @@ function renderJournal(){
  }
  if(!host.children.length)host.textContent="Событий пока нет.";
 }
+function canControlToken(t){return !!t&&t.type==="token"&&(gmAccess()||(window.networkRoleActive&&roomPlayers.some(p=>p.id===myClientId&&p.tokenId===t.id)))}
+function sendTokenValues(t,values){if(socket?.readyState===1&&canControlToken(t)){socket.send(JSON.stringify({type:"updateToken",tokenId:t.id,values}));return true}return false}
 function refreshExtras(){
- $("#portraitControls").classList.toggle("hidden",!gmAccess());
+ const allowed=canControlToken(current());$("#portraitControls").classList.toggle("hidden",!allowed);
+ $("#pName").disabled=!allowed;for(const id of ["pX","pY","pW","pH","pR"])$("#"+id).disabled=!gmAccess();
  const t=current(),token=t?.type==="token";$("#tokenExtras").classList.toggle("hidden",!token);
  if(!token)return;
  const gm=gmAccess(),count=Math.max(0,Math.floor(Number(t.bennies)||0));
@@ -356,7 +359,7 @@ map.addEventListener("pointerdown",ev=>{
  if(tool==="measure"){drag={kind:"measure",start:p};showMeasure(p,p);return}
  if(tool==="select"){
    if(!hit){selected=null;render();return}
-   selected=hit.dataset.id;const it=current();if(window.networkRoleActive&&!isGM&&!roomPlayers.some(p=>p.id===myClientId&&p.tokenId===it.id&&p.isTurn)){render();return}remember();drag={kind:"item",it,dx:p.x-it.x,dy:p.y-it.y,path:0,lastX:it.x,lastY:it.y};render();return;
+   selected=hit.dataset.id;const it=current();if(window.networkRoleActive&&!isGM&&!roomPlayers.some(p=>p.id===myClientId&&p.tokenId===it.id&&(!roomPlayers.some(p=>p.isTurn)||p.isTurn))){render();return}remember();drag={kind:"item",it,dx:p.x-it.x,dy:p.y-it.y,path:0,lastX:it.x,lastY:it.y};render();return;
  }
  if(window.networkRoleActive&&!isGM)return;add(tool,p.x,p.y);
 });
@@ -421,7 +424,7 @@ document.querySelectorAll("[data-grid-axis]").forEach(button=>button.addEventLis
  resizeMap(state.cols+(axis==="cols"?delta:0),state.rows+(axis==="rows"?delta:0),state.cell);
 }));
 ["pName","pX","pY","pW","pH","pR"].forEach(id=>$("#"+id).addEventListener("change",()=>{
- const it=current();if(!it||window.networkRoleActive&&!isGM)return;remember();it.name=$("#pName").value;it.x=Number($("#pX").value)||0;it.y=Number($("#pY").value)||0;it.w=Math.max(4,Number($("#pW").value)||4);it.h=Math.max(4,Number($("#pH").value)||4);it.r=Number($("#pR").value)||0;render();
+ const it=current();if(!it)return;if(window.networkRoleActive&&!isGM){if(canControlToken(it))sendTokenValues(it,{name:$("#pName").value});return}remember();it.name=$("#pName").value;it.x=Number($("#pX").value)||0;it.y=Number($("#pY").value)||0;it.w=Math.max(4,Number($("#pW").value)||4);it.h=Math.max(4,Number($("#pH").value)||4);it.r=Number($("#pR").value)||0;render();
 }));
 function duplicateToken(){
  if(!gmAccess())return;
@@ -608,6 +611,8 @@ $("#copyInvite").addEventListener("click",async()=>{
 
 // Hook state-changing render calls into network synchronization.
 function refreshRole(){
+ $("#imageUploadBtn").classList.toggle("hidden",!gmAccess());$("#imageUploadBtn").disabled=!gmAccess();
+ if(!gmAccess()&&$("#sceneDialog").open)$("#sceneDialog").close();
  refreshScenes();
  const player=!gmAccess();document.body.classList.toggle("player-sidebar",player);
  if(player&&!["select","pan"].includes(tool)){tool="select";drag=null;document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("active",b.dataset.tool==="select"));stage.style.cursor="default";}
@@ -700,8 +705,8 @@ function renderTokenConditionBadges(){
  }
 }
 function updateSelectedCondition(kind,delta){
- if(window.networkRoleActive&&!isGM)return;
- const t=selectedToken();if(!t)return;
+ const t=selectedToken();if(!canControlToken(t))return;
+ if(window.networkRoleActive&&!isGM){const v=JSON.parse(JSON.stringify(t));normalizeTokenCondition(v);if(kind==="wounds")v.wounds=Math.max(0,Math.min(3,v.wounds+delta));if(kind==="shaken")v.shaken=!v.shaken;if(kind==="condition")v.conditions[delta]=!v.conditions[delta];sendTokenValues(t,{wounds:v.wounds,shaken:v.shaken,conditions:v.conditions});return;}
  remember();normalizeTokenCondition(t);
  if(kind==="wounds")t.wounds=Math.max(0,Math.min(3,t.wounds+delta));
  if(kind==="shaken")t.shaken=!t.shaken;
@@ -949,9 +954,10 @@ renderTokenConditionBadges();
 const imageUploadBtn=document.querySelector("#imageUploadBtn");
 const imageFile=document.querySelector("#imageFile");
 if(imageUploadBtn && imageFile){
-  imageUploadBtn.addEventListener("click",()=>imageFile.click());
+  imageUploadBtn.addEventListener("click",()=>{if(gmAccess())imageFile.click()});
   imageFile.addEventListener("change",()=>{
-    const file=imageFile.files && imageFile.files[0];
+    if(!gmAccess()){imageFile.value="";return}
+    const uploadScene=state.activeSceneId;const file=imageFile.files && imageFile.files[0];
     if(!file)return;
     if(!(file.type||"").startsWith("image/")){
       alert("Выберите файл изображения.");
@@ -963,6 +969,7 @@ if(imageUploadBtn && imageFile){
       const data=String(reader.result||"");
       const probe=new Image();
       probe.onload=()=>{
+        if(!gmAccess()||state.activeSceneId!==uploadScene){imageFile.value="";return}
         remember();
         state.mapImage=data;
         // Keep current width, adapt map height to the image aspect ratio.
@@ -1021,6 +1028,7 @@ function restoreBattle(data){
  }
  if(st.battleLog!==undefined&&(!Array.isArray(st.battleLog)||!st.battleLog.every(r=>r&&typeof r.text==="string"&&typeof r.time==="string")))throw Error();
  if(d.gmNotes!==undefined&&(!d.gmNotes||typeof d.gmNotes!=="object"||Array.isArray(d.gmNotes)||!Object.values(d.gmNotes).every(v=>typeof v==="string")))throw Error();
+ if(window.networkRoleActive)st.roomRevision=state.roomRevision||0;
  gmNotes=d.gmNotes||{};state=st;initDeck=deck;initDrawn=drawn;initTurnIndex=index;combatRound=round;initNameIndex=nameIndex;
  heldTurns=d.heldTurns||[];interruptedTurnStack=d.interruptedTurnStack||[];jokerUsed=d.jokerUsed||[];
  panX=finite(d.panX)?d.panX:35;panY=finite(d.panY)?d.panY:35;zoom=finite(d.zoom)?Math.max(.25,Math.min(3,d.zoom)):1;
@@ -1063,7 +1071,7 @@ function refreshScenes(){
 function switchScene(id){
  if(!gmAccess()||id===state.activeSceneId)return;
  captureScene();const target=state.scenes.find(s=>s.id===id);if(!target?.map)return;
- const scenes=state.scenes,log=state.battleLog||[];state={...JSON.parse(JSON.stringify(target.map)),scenes,activeSceneId:id,battleLog:log};
+ const scenes=state.scenes,log=state.battleLog||[];state={...JSON.parse(JSON.stringify(target.map)),scenes,activeSceneId:id,battleLog:log,roomRevision:state.roomRevision||0};
  selected=null;drag=null;history=[];future=[];panX=state.camera?.panX??35;panY=state.camera?.panY??35;zoom=state.camera?.zoom??1;
  applyRoomBattle();syncInputs();render();journal("Сцена: "+target.name);saveBattleLocal();
 }
@@ -1084,22 +1092,33 @@ function validateScenes(st){
 }
 $("#sceneSelect").addEventListener("change",e=>switchScene(e.target.value));
 $("#sceneAdd").addEventListener("click",()=>{
- if(!gmAccess())return;captureScene();if(state.scenes.length>=50){alert("В сохранении может быть до 50 сцен.");return}
- const name=prompt("Название новой сцены",`Сцена ${state.scenes.length+1}`)?.trim();if(!name)return;
- const id=uid(),empty={cols:30,rows:22,cell:48,items:[],mapImage:null,battleSession:{initDeck:[],initDrawn:[],initNameIndex:0,initTurnIndex:-1,combatRound:1,heldTurns:[],interruptedTurnStack:[],jokerUsed:[]}};
- state.scenes.push({id,name:name.slice(0,80),map:empty});switchScene(id);initFresh();saveBattleLocal();broadcastState();
+ if(!gmAccess())return;$("#newSceneName").value=`Сцена ${(state.scenes?.length||1)+1}`;$("#newSceneImage").value="";$("#sceneError").textContent="";$("#sceneDialog").showModal();$("#newSceneName").focus();
+});
+$("#sceneCancel").addEventListener("click",()=>$("#sceneDialog").close());
+$("#sceneForm").addEventListener("submit",async e=>{
+ e.preventDefault();if(!gmAccess())return;const name=$("#newSceneName").value.trim();if(!name){$("#sceneError").textContent="Введите название.";return}
+ if((state.scenes?.length||1)>=50){$("#sceneError").textContent="Достигнут предел: 50 сцен.";return}
+ const file=$("#newSceneImage").files[0];$("#sceneSubmit").disabled=true;
+ try{
+  let data=null,ratio=22/30;
+  if(file){if(!file.type.startsWith("image/"))throw Error("Выберите изображение карты.");data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(Error("Не удалось прочитать файл."));r.readAsDataURL(file)});const img=new Image();img.src=data;await img.decode();ratio=img.naturalHeight/img.naturalWidth;}
+  if(!gmAccess()||!$("#sceneDialog").open)return;
+  captureScene();const id=uid(),rows=Math.max(1,Math.min(100,Math.round(30*ratio)));
+  const empty={cols:30,rows,cell:48,items:[],mapImage:data,mapImageWidth:1440,mapImageHeight:rows*48,battleSession:{initDeck:[],initDrawn:[],initNameIndex:0,initTurnIndex:-1,combatRound:1,heldTurns:[],interruptedTurnStack:[],jokerUsed:[]}};
+  state.scenes.push({id,name,map:empty});switchScene(id);initFresh();saveBattleLocal();broadcastState();$("#sceneDialog").close();
+ }catch(err){$("#sceneError").textContent="Не удалось загрузить сцену. Проверьте изображение и повторите."}finally{$("#sceneSubmit").disabled=false}
 });
 $("#sceneRename").addEventListener("click",()=>{if(!gmAccess())return;captureScene();const s=state.scenes.find(s=>s.id===state.activeSceneId);const name=prompt("Название сцены",s.name)?.trim();if(name){s.name=name.slice(0,80);render();journal("Сцена переименована: "+s.name)}});
-$("#portraitUpload").addEventListener("click",()=>{if(gmAccess()&&selectedToken())$("#portraitFile").click()});
-$("#portraitRemove").addEventListener("click",()=>{const t=selectedToken();if(!gmAccess()||!t?.portrait)return;remember();delete t.portrait;render();journal("Портрет убран: "+(t.name||"Токен"))});
+$("#portraitUpload").addEventListener("click",()=>{if(canControlToken(selectedToken()))$("#portraitFile").click()});
+$("#portraitRemove").addEventListener("click",()=>{const t=selectedToken();if(!canControlToken(t)||!t?.portrait)return;if(window.networkRoleActive&&!isGM){sendTokenValues(t,{portrait:null});return}remember();delete t.portrait;render();journal("Портрет убран: "+(t.name||"Токен"))});
 $("#portraitFile").addEventListener("change",async e=>{
- const f=e.target.files[0],id=selected,sceneId=state.activeSceneId;e.target.value="";if(!f||!gmAccess())return;
+ const f=e.target.files[0],id=selected,sceneId=state.activeSceneId;e.target.value="";if(!f||!canControlToken(selectedToken()))return;
  if(!["image/png","image/jpeg","image/webp"].includes(f.type)||f.size>15*1024*1024){$("#portraitNotice").textContent="Выберите PNG, JPEG или WebP размером до 15 МБ.";return}
  const url=URL.createObjectURL(f);try{
   const img=new Image();img.src=url;await img.decode();
-  const t=state.items.find(t=>t.id===id&&t.type==="token");if(!gmAccess()||!t||sceneId!==state.activeSceneId)return;
+  const t=state.items.find(t=>t.id===id&&t.type==="token");if(!canControlToken(t)||sceneId!==state.activeSceneId)return;
   const c=document.createElement("canvas");c.width=c.height=256;const ctx=c.getContext("2d"),side=Math.min(img.naturalWidth,img.naturalHeight);
-  ctx.drawImage(img,(img.naturalWidth-side)/2,(img.naturalHeight-side)/2,side,side,0,0,256,256);remember();t.portrait=c.toDataURL("image/webp",.85);render();journal("Портрет загружен: "+(t.name||"Токен"));$("#portraitNotice").textContent="Портрет сохранён вместе с токеном.";
+  ctx.drawImage(img,(img.naturalWidth-side)/2,(img.naturalHeight-side)/2,side,side,0,0,256,256);const portrait=c.toDataURL("image/webp",.85);if(window.networkRoleActive&&!isGM){sendTokenValues(t,{portrait});return}remember();t.portrait=portrait;render();journal("Портрет загружен: "+(t.name||"Токен"));$("#portraitNotice").textContent="Портрет сохранён вместе с токеном.";
  }catch{$("#portraitNotice").textContent="Не удалось открыть изображение."}finally{URL.revokeObjectURL(url)}
 });
 refreshScenes();

@@ -18,6 +18,28 @@ function broadcast(room,obj,except=null){
   const data=JSON.stringify(obj);
   for(const [id,c] of room.clients) if(id!==except && c.ws?.readyState===1) c.ws.send(data);
 }
+function ensurePlayerTokens(room){
+ if(!room.state)return false;
+ const scene=room.state.activeSceneId||"default";let changed=false;
+ for(const [id,c] of room.clients){
+  if(id===room.gmId)continue;
+  c.tokensByScene=c.tokensByScene||{};
+  const known=c.tokensByScene[scene];
+  let t=room.state.items.find(t=>t.type==="token"&&(t.id===known||t.ownerClientId===id));
+  if(!t&&!known){
+   const cell=room.state.cell||48;let x=0,y=0;
+   outer:for(let row=0;row<100;row++)for(let col=0;col<(room.state.cols||30);col++){
+    x=col*cell;y=row*cell;if(!room.state.items.some(i=>x<i.x+i.w&&x+cell>i.x&&y<i.y+i.h&&y+cell>i.y))break outer;
+   }
+   room.state.rows=Math.max(room.state.rows,Math.ceil((y+cell)/cell));
+   t={id:crypto.randomUUID(),type:"token",name:c.name,x,y,w:cell,h:cell,r:0,bennies:0,wounds:0,shaken:false,conditions:{},ownerClientId:id};room.state.items.push(t);changed=true;
+  }
+  if(t){t.ownerClientId=id;c.tokensByScene[scene]=t.id;c.tokenId=t.id}else c.tokenId=null;
+ }
+ if(changed)room.state.roomRevision=(room.state.roomRevision||0)+1;
+ return changed;
+}
+function syncActiveScene(room){const scene=room.state?.scenes?.find(s=>s.id===room.state.activeSceneId);if(scene?.map){scene.map.items=JSON.parse(JSON.stringify(room.state.items));scene.map.rows=room.state.rows}}
 function players(room){
   return [...room.clients].map(([id,c])=>({id,name:c.name,isGM:id===room.gmId,tokenId:c.tokenId||null,isTurn:id===room.turnClientId,online:c.ws?.readyState===1}));
 }
@@ -38,14 +60,16 @@ wss.on("connection", ws=>{
       else{cl={ws,name:String(msg.name).trim().slice(0,32),tokenId:null,tokensByScene:{},resumeToken:crypto.randomBytes(32).toString("hex"),lastSeen:Date.now()};room.clients.set(clientId,cl)}
       room.emptySince=null;
       if(!room.gmId||!room.clients.get(room.gmId)?.ws)room.gmId=clientId;
+      const tokensCreated=ensurePlayerTokens(room);syncActiveScene(room);
       send(ws,{type:"welcome",clientId,name:cl.name,resumeToken:cl.resumeToken,resumed:!!resumed,isGM:room.gmId===clientId,state:room.state,turnClientId:room.turnClientId});
+      if(tokensCreated)broadcast(room,{type:"state",clientId:"server",state:room.state});
       broadcast(room,{type:"players",players:players(room)});
     } else if(joinedCode&&rooms.get(joinedCode)?.clients.get(clientId)?.ws!==ws){return;
     } else if(msg.type==="transferGM" && joinedCode){
       const room=getRoom(joinedCode);
       if(room.gmId!==clientId)return send(ws,{type:"error",message:"Только текущий GM может передать роль."});
       if(msg.targetId===clientId||room.clients.get(msg.targetId)?.ws?.readyState!==1)return send(ws,{type:"error",message:"Игрок уже отключился."});
-      room.gmId=msg.targetId;broadcast(room,{type:"players",players:players(room)});
+      room.gmId=msg.targetId;ensurePlayerTokens(room);syncActiveScene(room);broadcast(room,{type:"state",clientId:"server",state:room.state});broadcast(room,{type:"players",players:players(room)});
       broadcast(room,{type:"gmTransferred",name:room.clients.get(msg.targetId).name});
     } else if(msg.type==="benny" && joinedCode){
       const room=getRoom(joinedCode),cl=room.clients.get(clientId),delta=msg.delta;
@@ -61,26 +85,46 @@ wss.on("connection", ws=>{
       const room=getRoom(joinedCode);
       if(clientId!==room.gmId) return send(ws,{type:"error",message:"Только GM может редактировать карту."});
       if(!msg.state||!Array.isArray(msg.state.items))return;
+      if(room.state&&(msg.state.roomRevision||0)<(room.state.roomRevision||0)){send(ws,{type:"state",clientId:"server",state:room.state});return}
       if(room.state){for(const t of msg.state.items){const oldMap=room.state.activeSceneId===msg.state.activeSceneId?room.state:room.state.scenes?.find(s=>s.id===msg.state.activeSceneId)?.map;const old=oldMap?.items?.find(i=>i.id===t.id);if(old)t.bennies=old.bennies||0}
       const byKey=new Map();for(const row of [...(room.state.battleLog||[]),...(msg.state.battleLog||[])])byKey.set(JSON.stringify(row),row);msg.state.battleLog=[...byKey.values()].sort((a,b)=>a.time.localeCompare(b.time));}
       const sceneChanged=room.state?.activeSceneId!==msg.state.activeSceneId;
       room.state=msg.state;
       if(sceneChanged){for(const c of room.clients.values())c.tokenId=c.tokensByScene?.[room.state.activeSceneId||"default"]||null;room.turnClientId=null;broadcast(room,{type:"players",players:players(room)})}
-      broadcast(room,{type:"state",clientId,state:msg.state},clientId);
+      const added=ensurePlayerTokens(room);syncActiveScene(room);broadcast(room,{type:"state",clientId:added?"server":clientId,state:room.state},added?null:clientId);broadcast(room,{type:"players",players:players(room)});
     } else if(msg.type==="assignToken" && joinedCode){
       const room=getRoom(joinedCode); if(clientId!==room.gmId)return;
       const target=room.clients.get(String(msg.clientId||"")); if(!target)return;
-      target.tokenId=String(msg.tokenId||"");target.tokensByScene=target.tokensByScene||{};target.tokensByScene[room.state?.activeSceneId||"default"]=target.tokenId; broadcast(room,{type:"players",players:players(room)});
+      const tokenId=String(msg.tokenId||"");
+      const assigned=room.state?.items?.find(t=>t.id===tokenId&&t.type==="token");if(tokenId&&!assigned)return;
+      for(const t of room.state?.items||[])if(t.ownerClientId===String(msg.clientId||""))delete t.ownerClientId;
+      if(assigned)assigned.ownerClientId=String(msg.clientId||"");
+      for(const c of room.clients.values())if(c!==target&&c.tokenId===tokenId){c.tokenId=null;if(c.tokensByScene)c.tokensByScene[room.state?.activeSceneId||"default"]=""}
+      target.tokenId=tokenId;target.tokensByScene=target.tokensByScene||{};target.tokensByScene[room.state?.activeSceneId||"default"]=target.tokenId; broadcast(room,{type:"players",players:players(room)});
     } else if(msg.type==="setTurn" && joinedCode){
       const room=getRoom(joinedCode); if(clientId!==room.gmId)return;
       room.turnClientId=String(msg.clientId||"")||null;
       broadcast(room,{type:"turn",turnClientId:room.turnClientId});
       broadcast(room,{type:"players",players:players(room)});
+    } else if(msg.type==="updateToken" && joinedCode){
+      const room=getRoom(joinedCode),cl=room.clients.get(clientId),t=room.state?.items?.find(t=>t.id===msg.tokenId&&t.type==="token");
+      if(!t||(clientId!==room.gmId&&cl.tokenId!==t.id))return;
+      const v=msg.values||{};
+      const before=JSON.stringify(t),nameBefore=t.name||"Токен";
+      if(typeof v.name==="string")t.name=v.name.slice(0,80);
+      if(v.portrait===null)delete t.portrait;
+      else if(typeof v.portrait==="string"&&v.portrait.length<300000&&/^data:image\/(png|jpeg|webp);base64,/.test(v.portrait))t.portrait=v.portrait;
+      if(Number.isFinite(v.wounds))t.wounds=Math.max(0,Math.min(3,Math.floor(v.wounds)));
+      if(typeof v.shaken==="boolean")t.shaken=v.shaken;
+      if(v.conditions&&typeof v.conditions==="object"){t.conditions=t.conditions||{};for(const k of ["dead","unconscious","fatigued","prone","bound","distracted","vulnerable","stunned"])if(typeof v.conditions[k]==="boolean")t.conditions[k]=v.conditions[k]}
+      if(JSON.stringify(t)!==before){room.state.roomRevision=(room.state.roomRevision||0)+1;room.state.battleLog=room.state.battleLog||[];room.state.battleLog.push({time:new Date().toISOString(),round:room.state.battleSession?.combatRound||1,actor:cl.name,text:`Изменён токен: ${nameBefore}${t.name!==nameBefore?" → "+t.name:""}`})}
+      syncActiveScene(room);broadcast(room,{type:"state",clientId:"server",state:room.state});
     } else if(msg.type==="moveToken" && joinedCode){
       const room=getRoom(joinedCode), cl=room.clients.get(clientId);
-      if(!cl||room.turnClientId!==clientId||!cl.tokenId||cl.tokenId!==msg.tokenId||!room.state)return;
+      if(!cl||(room.turnClientId&&room.turnClientId!==clientId)||!cl.tokenId||cl.tokenId!==msg.tokenId||!room.state)return;
       const it=room.state.items?.find(x=>x.id===cl.tokenId&&x.type==="token"); if(!it)return;
-      it.x=Number(msg.x)||0;it.y=Number(msg.y)||0;
+      if(!Number.isFinite(msg.x)||!Number.isFinite(msg.y))return;
+      it.x=Math.max(0,Math.min(room.state.cols*room.state.cell-it.w,msg.x));it.y=Math.max(0,Math.min(room.state.rows*room.state.cell-it.h,msg.y));syncActiveScene(room);
       broadcast(room,{type:"tokenMoved",clientId,tokenId:it.id,x:it.x,y:it.y});
     } else if(msg.type==="drawInitiative" && joinedCode){
       const room=getRoom(joinedCode);
