@@ -1,4 +1,5 @@
 
+const crypto = require("crypto");
 const http = require("http");
 const { WebSocketServer } = require("ws");
 const path = require("path");
@@ -9,19 +10,19 @@ const wss = new WebSocketServer({ server, path: "/ws" });
 
 const rooms = new Map();
 function getRoom(code){
-  if(!rooms.has(code)) rooms.set(code,{state:null,clients:new Map(),gmId:null,turnClientId:null,deck:[],discard:[]});
+  if(!rooms.has(code)) rooms.set(code,{state:null,clients:new Map(),gmId:null,turnClientId:null,deck:[],discard:[],emptySince:null});
   return rooms.get(code);
 }
-function send(ws,obj){ if(ws.readyState===1) ws.send(JSON.stringify(obj)); }
+function send(ws,obj){ if(ws?.readyState===1) ws.send(JSON.stringify(obj)); }
 function broadcast(room,obj,except=null){
   const data=JSON.stringify(obj);
-  for(const [id,c] of room.clients) if(id!==except && c.ws.readyState===1) c.ws.send(data);
+  for(const [id,c] of room.clients) if(id!==except && c.ws?.readyState===1) c.ws.send(data);
 }
 function players(room){
-  return [...room.clients].map(([id,c])=>({id,name:c.name,isGM:id===room.gmId,tokenId:c.tokenId||null,isTurn:id===room.turnClientId}));
+  return [...room.clients].map(([id,c])=>({id,name:c.name,isGM:id===room.gmId,tokenId:c.tokenId||null,isTurn:id===room.turnClientId,online:c.ws?.readyState===1}));
 }
 wss.on("connection", ws=>{
-  const clientId=Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+  let clientId=crypto.randomUUID();
   let joinedCode=null;
   ws.on("message", raw=>{
     let msg; try{msg=JSON.parse(raw)}catch{return}
@@ -31,14 +32,19 @@ wss.on("connection", ws=>{
       if(joinedCode)return;
       if(!String(msg.name||"").trim())return send(ws,{type:"error",message:"Введите имя."});
       joinedCode=code; const room=getRoom(code);
-      room.clients.set(clientId,{ws,name:String(msg.name).trim().slice(0,32),tokenId:null});
-      if(!room.gmId) room.gmId=clientId;
-      send(ws,{type:"welcome",clientId,isGM:room.gmId===clientId,state:room.state,turnClientId:room.turnClientId});
+      const resumed=[...room.clients].find(([,c])=>typeof msg.resumeToken==="string"&&c.resumeToken===msg.resumeToken);
+      let cl;
+      if(resumed){clientId=resumed[0];cl=resumed[1];const old=cl.ws;cl.ws=ws;cl.lastSeen=Date.now();if(old&&old!==ws)old.close(4001,"Opened in another tab");}
+      else{cl={ws,name:String(msg.name).trim().slice(0,32),tokenId:null,tokensByScene:{},resumeToken:crypto.randomBytes(32).toString("hex"),lastSeen:Date.now()};room.clients.set(clientId,cl)}
+      room.emptySince=null;
+      if(!room.gmId||!room.clients.get(room.gmId)?.ws)room.gmId=clientId;
+      send(ws,{type:"welcome",clientId,name:cl.name,resumeToken:cl.resumeToken,resumed:!!resumed,isGM:room.gmId===clientId,state:room.state,turnClientId:room.turnClientId});
       broadcast(room,{type:"players",players:players(room)});
+    } else if(joinedCode&&rooms.get(joinedCode)?.clients.get(clientId)?.ws!==ws){return;
     } else if(msg.type==="transferGM" && joinedCode){
       const room=getRoom(joinedCode);
       if(room.gmId!==clientId)return send(ws,{type:"error",message:"Только текущий GM может передать роль."});
-      if(msg.targetId===clientId||!room.clients.has(msg.targetId))return send(ws,{type:"error",message:"Игрок уже отключился."});
+      if(msg.targetId===clientId||room.clients.get(msg.targetId)?.ws?.readyState!==1)return send(ws,{type:"error",message:"Игрок уже отключился."});
       room.gmId=msg.targetId;broadcast(room,{type:"players",players:players(room)});
       broadcast(room,{type:"gmTransferred",name:room.clients.get(msg.targetId).name});
     } else if(msg.type==="benny" && joinedCode){
@@ -55,14 +61,16 @@ wss.on("connection", ws=>{
       const room=getRoom(joinedCode);
       if(clientId!==room.gmId) return send(ws,{type:"error",message:"Только GM может редактировать карту."});
       if(!msg.state||!Array.isArray(msg.state.items))return;
-      if(room.state){for(const t of msg.state.items){const old=room.state.items?.find(i=>i.id===t.id);if(old)t.bennies=old.bennies||0}
+      if(room.state){for(const t of msg.state.items){const oldMap=room.state.activeSceneId===msg.state.activeSceneId?room.state:room.state.scenes?.find(s=>s.id===msg.state.activeSceneId)?.map;const old=oldMap?.items?.find(i=>i.id===t.id);if(old)t.bennies=old.bennies||0}
       const byKey=new Map();for(const row of [...(room.state.battleLog||[]),...(msg.state.battleLog||[])])byKey.set(JSON.stringify(row),row);msg.state.battleLog=[...byKey.values()].sort((a,b)=>a.time.localeCompare(b.time));}
+      const sceneChanged=room.state?.activeSceneId!==msg.state.activeSceneId;
       room.state=msg.state;
+      if(sceneChanged){for(const c of room.clients.values())c.tokenId=c.tokensByScene?.[room.state.activeSceneId||"default"]||null;room.turnClientId=null;broadcast(room,{type:"players",players:players(room)})}
       broadcast(room,{type:"state",clientId,state:msg.state},clientId);
     } else if(msg.type==="assignToken" && joinedCode){
       const room=getRoom(joinedCode); if(clientId!==room.gmId)return;
       const target=room.clients.get(String(msg.clientId||"")); if(!target)return;
-      target.tokenId=String(msg.tokenId||""); broadcast(room,{type:"players",players:players(room)});
+      target.tokenId=String(msg.tokenId||"");target.tokensByScene=target.tokensByScene||{};target.tokensByScene[room.state?.activeSceneId||"default"]=target.tokenId; broadcast(room,{type:"players",players:players(room)});
     } else if(msg.type==="setTurn" && joinedCode){
       const room=getRoom(joinedCode); if(clientId!==room.gmId)return;
       room.turnClientId=String(msg.clientId||"")||null;
@@ -88,13 +96,16 @@ wss.on("connection", ws=>{
   });
   ws.on("close",()=>{
     if(!joinedCode)return; const room=rooms.get(joinedCode); if(!room)return;
-    room.clients.delete(clientId);
-    if(room.gmId===clientId) room.gmId=room.clients.keys().next().value||null;
-    if(room.turnClientId===clientId) room.turnClientId=null;
-    if(room.clients.size===0) rooms.delete(joinedCode);
-    else broadcast(room,{type:"players",players:players(room)});
+    const cl=room.clients.get(clientId);if(!cl||cl.ws!==ws)return;cl.ws=null;cl.lastSeen=Date.now();
+    if(room.gmId===clientId)room.gmId=[...room.clients].find(([,c])=>c.ws?.readyState===1)?.[0]||clientId;
+    if(![...room.clients.values()].some(c=>c.ws?.readyState===1))room.emptySince=Date.now();
+    broadcast(room,{type:"players",players:players(room)});
   });
 });
+// Keep rooms and reconnect credentials for 24 hours after the last disconnect (in memory).
+setInterval(()=>{for(const [code,r] of rooms){if(r.emptySince&&Date.now()-r.emptySince>86400000)rooms.delete(code)}},60000).unref();
+const heartbeat=setInterval(()=>{for(const ws of wss.clients){if(ws.alive===false){ws.terminate();continue}ws.alive=false;ws.ping()}},30000);heartbeat.unref();
+wss.on("connection",ws=>{ws.alive=true;ws.on("pong",()=>ws.alive=true);ws.on("error",()=>{})});
 const PORT=process.env.PORT||3000;
 server.listen(PORT,()=>console.log(`SWADE Map Forge listening on ${PORT}`));
 

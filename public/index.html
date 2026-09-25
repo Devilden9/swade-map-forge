@@ -110,6 +110,11 @@ dialog{background:#171c22;color:#eee;border:1px solid #647080;border-radius:12px
 
 body.player-sidebar .left > :not(:first-child){display:none!important}
 body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="pan"]){display:none!important}
+
+.token .portrait{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.token.incapacitated .portrait{display:none}.token.incapacitated .portraitName{display:block}
+.portraitName{display:none}.sceneControls{display:flex;gap:5px;align-items:center}.sceneControls select{max-width:180px}
+.mpPanel{max-height:calc(100% - 36px);overflow:auto}
 </style>
 </head>
 <body>
@@ -118,7 +123,7 @@ body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="
  <div class="brand">SAVAGE WORLDS · MAP FORGE v2</div>
  <button id="undo">↶ Undo</button><button id="redo">↷ Redo</button>
  <button id="save">Сохранить бой</button><button id="load">Загрузить</button><input id="file" type="file" accept=".json,application/json" hidden>
- <button id="export">Экспорт PNG</button><button id="imageUploadBtn">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="initiativeToggle">🃏 Инициатива</button><button id="mpToggle">🌐 Multiplayer</button><button id="journalToggle">Журнал боя</button><label id="localRoleLabel" style="margin:0">Проверка роли <select id="localRole" style="width:auto"><option value="gm">GM</option><option value="player">Игрок</option></select></label><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
+ <button id="export">Экспорт PNG</button><button id="imageUploadBtn">🖼 Загрузить карту</button><input id="imageFile" type="file" accept="image/*,.avif,.svg,.bmp" hidden><button id="diceToggle">🎲 Кубы</button><button id="initiativeToggle">🃏 Инициатива</button><button id="mpToggle">🌐 Multiplayer</button><div class="sceneControls"><label for="sceneSelect" style="margin:0">Сцена</label><select id="sceneSelect"></select><button id="sceneAdd" title="Создать пустую сцену">+ Сцена</button><button id="sceneRename" title="Название сцены">✎</button></div><button id="journalToggle">Журнал боя</button><label id="localRoleLabel" style="margin:0">Проверка роли <select id="localRole" style="width:auto"><option value="gm">GM</option><option value="player">Игрок</option></select></label><div class="spacer"></div><span id="netState">Офлайн</span><span class="status" id="status">100%</span>
 </header>
 <div class="workspace">
 <aside class="left">
@@ -226,7 +231,7 @@ body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="
    <div class="row"><div><label>Ширина</label><input id="pW" type="number"></div><div><label>Высота</label><input id="pH" type="number"></div></div>
    <label>Поворот, °</label><input id="pR" type="number">
    <div id="tokenExtras" class="hidden">
- <label>Фишки</label><div style="display:flex;gap:10px;align-items:center"><button id="bennyMinus" type="button" aria-label="Потратить фишку">−</button><b id="bennyCount">0</b><button id="bennyPlus" type="button" aria-label="Добавить фишку">+</button></div><p class="hint">Игрок тратит фишки. GM добавляет и убавляет.</p>
+ <div id="portraitControls"><label>Портрет токена</label><button id="portraitUpload" type="button">Загрузить портрет</button><button id="portraitRemove" type="button">Убрать</button><input id="portraitFile" type="file" accept="image/png,image/jpeg,image/webp" hidden><p id="portraitNotice" class="hint" role="status"></p></div><label>Фишки</label><div style="display:flex;gap:10px;align-items:center"><button id="bennyMinus" type="button" aria-label="Потратить фишку">−</button><b id="bennyCount">0</b><button id="bennyPlus" type="button" aria-label="Добавить фишку">+</button></div><p class="hint">Игрок тратит фишки. GM добавляет и убавляет.</p>
  <p id="tokenMovement" class="hint"></p><div id="gmNotesBox"><label for="gmNotes">Заметки GM</label><textarea id="gmNotes" placeholder="Броня, защита, оружие, особенности…"></textarea><p class="hint">Заметки хранятся у GM и не отправляются в комнату.</p></div></div>
  <button id="duplicateToken" type="button" style="width:100%;margin-top:10px">Дублировать токен</button><div id="duplicateHint" class="hint" role="status"></div>
    <button id="delete" style="width:100%;margin-top:10px">Удалить</button>
@@ -284,6 +289,7 @@ function renderJournal(){
  if(!host.children.length)host.textContent="Событий пока нет.";
 }
 function refreshExtras(){
+ $("#portraitControls").classList.toggle("hidden",!gmAccess());
  const t=current(),token=t?.type==="token";$("#tokenExtras").classList.toggle("hidden",!token);
  if(!token)return;
  const gm=gmAccess(),count=Math.max(0,Math.floor(Number(t.bennies)||0));
@@ -316,7 +322,12 @@ function render(){
    const e=document.createElement("div"); e.className="entity "+it.type+(it.id===selected?" selected":"");
    if(it.type==="token"&&(it.conditions?.dead||it.conditions?.unconscious))e.classList.add("incapacitated");
    e.dataset.id=it.id; e.style.left=it.x+"px";e.style.top=it.y+"px";e.style.width=it.w+"px";e.style.height=it.h+"px";e.style.transform=`rotate(${it.r||0}deg)`;
-   if(it.type==="token")e.textContent=it.name||"PC"; if(it.type==="prop")e.textContent=it.name||"OBJ";
+   if(it.type==="token"){
+   e.textContent=it.name||"PC";
+   if(it.portrait&&/^data:image\/(png|jpeg|webp);base64,/.test(it.portrait)){
+     e.replaceChildren();const img=document.createElement("img");img.className="portrait";img.src=it.portrait;img.alt=it.name||"Токен";e.appendChild(img);const label=document.createElement("span");label.className="portraitName";label.textContent=it.name||"PC";e.appendChild(label);
+   }
+ } if(it.type==="prop")e.textContent=it.name||"OBJ";
    map.appendChild(e);
  }
  updateProps(); $("#status").textContent=Math.round(zoom*100)+"%";
@@ -452,7 +463,9 @@ $("#export").addEventListener("click",()=>{
  x.fillStyle="#2a2d2c";x.fillRect(0,0,c.width,c.height);
  if($("#gridToggle").checked){x.strokeStyle="rgba(240,240,230,.18)";x.lineWidth=1;for(let i=0;i<=state.cols;i++){x.beginPath();x.moveTo(i*state.cell,0);x.lineTo(i*state.cell,c.height);x.stroke()}for(let j=0;j<=state.rows;j++){x.beginPath();x.moveTo(0,j*state.cell);x.lineTo(c.width,j*state.cell);x.stroke()}}
  for(const it of state.items){x.save();x.translate(it.x+it.w/2,it.y+it.h/2);x.rotate((it.r||0)*Math.PI/180);
-   if(it.type==="token"){x.fillStyle=(it.conditions?.dead||it.conditions?.unconscious)?"#000":"#53616e";x.strokeStyle="#ddd6c9";x.lineWidth=3;x.beginPath();x.arc(0,0,Math.min(it.w,it.h)/2,0,Math.PI*2);x.fill();x.stroke()}
+   if(it.type==="token"){x.fillStyle=(it.conditions?.dead||it.conditions?.unconscious)?"#000":"#53616e";x.strokeStyle="#ddd6c9";x.lineWidth=3;x.beginPath();x.arc(0,0,Math.min(it.w,it.h)/2,0,Math.PI*2);x.fill();x.stroke();
+   if(it.portrait&&!it.conditions?.dead&&!it.conditions?.unconscious){const img=[...map.querySelectorAll(".entity")].find(e=>e.dataset.id===it.id)?.querySelector("img");if(img?.complete&&img.naturalWidth){x.save();x.beginPath();x.arc(0,0,Math.min(it.w,it.h)/2-3,0,Math.PI*2);x.clip();x.drawImage(img,-it.w/2,-it.h/2,it.w,it.h);x.restore()}}
+   }
    else if(it.type==="cone"){x.fillStyle="rgba(225,105,38,.35)";x.beginPath();x.moveTo(-it.w/2,0);x.lineTo(it.w/2,-it.h/2);x.lineTo(it.w/2,it.h/2);x.closePath();x.fill()}
    else {x.fillStyle=it.type==="wall"?"#121417":it.type==="door"?"#6b452c":it.type==="fog"?"rgba(3,4,5,.88)":it.type==="blast"?"rgba(225,105,38,.28)":"#594936";if(it.type==="blast"){x.beginPath();x.ellipse(0,0,it.w/2,it.h/2,0,0,Math.PI*2);x.fill()}else x.fillRect(-it.w/2,-it.h/2,it.w,it.h)}
    x.restore();
@@ -519,10 +532,13 @@ function applyRoomBattle(){
  initDeck=d.initDeck||[];initDrawn=d.initDrawn||[];initNameIndex=d.initNameIndex||0;initTurnIndex=d.initTurnIndex??-1;combatRound=d.combatRound||1;heldTurns=d.heldTurns||[];interruptedTurnStack=d.interruptedTurnStack||[];jokerUsed=d.jokerUsed||[];
  initRenderRows();initStatus();initShow(initCurrent()?.card||null);
 }
-let roomPlayers=[],pendingRoom="";
+let roomPlayers=[],pendingRoom="",reconnectTimer=null,reconnectAttempt=0;
+function resumeInfo(code){try{return JSON.parse(localStorage.getItem("swade-room-"+code)||"null")}catch{return null}}
+function scheduleReconnect(code){clearTimeout(reconnectTimer);const delay=Math.min(15000,1000*2**Math.min(reconnectAttempt++,4));netState.textContent="Связь потеряна · переподключение…";reconnectTimer=setTimeout(()=>connectRoom(code),delay)}
 function requestRoom(code){
  code=String(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
  if(!code){$("#roomNotice").textContent="Введите код комнаты.";return}
+ const saved=resumeInfo(code);if(saved?.token){$("#playerName").value=saved.name;connectRoom(code);return}
  pendingRoom=code;$("#joinName").value=$("#playerName").value.trim();$("#nameError").textContent="";$("#nameDialog").showModal();$("#joinName").focus();
 }
 $("#nameForm").addEventListener("submit",e=>{e.preventDefault();const name=$("#joinName").value.trim();if(!name){$("#nameError").textContent="Введите имя.";return}$("#playerName").value=name;$("#nameDialog").close();connectRoom(pendingRoom)});
@@ -532,13 +548,14 @@ function renderPlayers(list){
  roomPlayers=list;
  const me=list.find(p=>p.id===myClientId);isGM=!!me?.isGM;window.networkIsGM=isGM;refreshRole();
  netState.textContent=`Комната ${room}${isGM?" · GM":" · Игрок"}`;
- playersBox.replaceChildren();for(const p of list){const row=document.createElement("div");row.textContent=`● ${p.name}${p.id===myClientId?" (вы)":""} — ${p.isGM?"GM":"Игрок"}`;playersBox.appendChild(row);
+ playersBox.replaceChildren();for(const p of list){const row=document.createElement("div");row.textContent=`${p.online===false?"○":"●"} ${p.name}${p.id===myClientId?" (вы)":""} — ${p.isGM?"GM":"Игрок"}${p.online===false?" · нет связи":""}`;playersBox.appendChild(row);
  if(isGM){const sel=document.createElement("select");sel.add(new Option("Без токена",""));for(const t of state.items.filter(t=>t.type==="token"))sel.add(new Option(t.name||"Токен",t.id));sel.value=p.tokenId||"";sel.setAttribute("aria-label","Токен: "+p.name);sel.onchange=()=>socket.send(JSON.stringify({type:"assignToken",clientId:p.id,tokenId:sel.value}));row.appendChild(sel)}
  }
- $("#nextGM").replaceChildren();for(const p of list.filter(p=>p.id!==myClientId)){const option=document.createElement("option");option.value=p.id;option.textContent=p.name;$("#nextGM").appendChild(option)}
+ $("#nextGM").replaceChildren();for(const p of list.filter(p=>p.id!==myClientId&&p.online!==false)){const option=document.createElement("option");option.value=p.id;option.textContent=p.name;$("#nextGM").appendChild(option)}
  $("#transferBox").classList.toggle("hidden",!isGM);$("#transferGM").disabled=!$("#nextGM").options.length;
 }
 function connectRoom(code){
+ clearTimeout(reconnectTimer);
  if(location.protocol==="file:"){$("#roomNotice").textContent="Для комнаты откройте HTML через сервер из комплекта. Локальный файл доступен для одиночной проверки.";return}
  if(!$("#playerName").value.trim())return requestRoom(code);
  code=(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
@@ -549,16 +566,18 @@ function connectRoom(code){
  socket=new WebSocket(`${proto}://${location.host}/ws`);
  netState.textContent="Подключение…";
  socket.onopen=()=>{
-   socket.send(JSON.stringify({type:"join",room,name:$("#playerName").value.trim()||"Игрок"}));
+   socket.send(JSON.stringify({type:"join",room,name:$("#playerName").value.trim()||"Игрок",resumeToken:resumeInfo(room)?.token}));
  };
  socket.onmessage=ev=>{
    let msg; try{msg=JSON.parse(ev.data)}catch{return}
    if(msg.type==="welcome"){
+     reconnectAttempt=0;try{localStorage.setItem("swade-room-"+room,JSON.stringify({name:msg.name,token:msg.resumeToken}));const u=new URL(location.href);u.searchParams.set("room",room);window.history.replaceState(null,"",u)}catch{}
+     $("#playerName").value=msg.name||$("#playerName").value;$("#roomNotice").textContent=msg.resumed?"Подключение восстановлено. Ваш токен сохранён.":"";
      myClientId=msg.clientId;isGM=!!msg.isGM;window.networkRoleActive=true;window.networkIsGM=isGM;refreshRole();netState.textContent=`Комната ${room}${isGM?" · GM":""}`;
      $("#copyInvite").disabled=false;
-     if(!msg.state&&isGM)broadcastState();if(msg.state){applyingRemote=true;state=msg.state;applyRoomBattle();syncInputs();render();applyingRemote=false}
+     if(!msg.state&&isGM)broadcastState();if(msg.state){applyingRemote=true;const changedScene=state.activeSceneId!==msg.state.activeSceneId;state=msg.state;if(changedScene){selected=null;drag=null;history=[];future=[];panX=35;panY=35;zoom=1}applyRoomBattle();syncInputs();render();applyingRemote=false}
    } else if(msg.type==="state" && msg.clientId!==myClientId){
-     applyingRemote=true;state=msg.state;applyRoomBattle();syncInputs();render();applyingRemote=false;
+     applyingRemote=true;const changedScene=state.activeSceneId!==msg.state.activeSceneId;state=msg.state;if(changedScene){selected=null;drag=null;history=[];future=[];panX=35;panY=35;zoom=1}applyRoomBattle();syncInputs();render();applyingRemote=false;
    } else if(msg.type==="players"){
      renderPlayers(msg.players);
    } else if(msg.type==="tokenMoved"){const t=state.items.find(t=>t.id===msg.tokenId);if(t){applyingRemote=true;t.x=msg.x;t.y=msg.y;render();applyingRemote=false}
@@ -568,13 +587,13 @@ function connectRoom(code){
      applyingRemote=true;addHist(escapeHtml(msg.name)+" — "+escapeHtml(msg.title),escapeHtml(msg.detail),msg.cls||"");applyingRemote=false;
    } else if(msg.type==="error"){alert(msg.message)}
  };
- socket.onclose=()=>{refreshRole();netState.textContent="Офлайн";playersBox.textContent="Соединение закрыто.";$("#transferBox").classList.add("hidden");$("#copyInvite").disabled=true;};
+ socket.onclose=ev=>{refreshRole();netState.textContent="Офлайн";playersBox.textContent="Соединение закрыто.";$("#transferBox").classList.add("hidden");$("#copyInvite").disabled=true;if(ev.code===4001){netState.textContent="Комната открыта в другой вкладке";return}scheduleReconnect(code);};
  socket.onerror=()=>{netState.textContent="Ошибка сети"};
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function broadcastState(){
  if(applyingRemote||!socket||socket.readyState!==1||!room||!isGM)return;
- clearTimeout(syncTimer);syncTimer=setTimeout(()=>{if(!isGM||socket.readyState!==1)return;const owner=roomPlayers.find(p=>p.tokenId===initCurrent()?.tokenId);socket.send(JSON.stringify({type:"setTurn",clientId:owner?.id||null}));state.battleSession={initDeck,initDrawn,initNameIndex,initTurnIndex,combatRound,heldTurns,interruptedTurnStack,jokerUsed};socket.send(JSON.stringify({type:"state",room,state}));},45);
+ clearTimeout(syncTimer);syncTimer=setTimeout(()=>{if(!isGM||socket.readyState!==1)return;const owner=roomPlayers.find(p=>p.tokenId===initCurrent()?.tokenId);socket.send(JSON.stringify({type:"setTurn",clientId:owner?.id||null}));state.battleSession={initDeck,initDrawn,initNameIndex,initTurnIndex,combatRound,heldTurns,interruptedTurnStack,jokerUsed};captureScene();socket.send(JSON.stringify({type:"state",room,state}));},45);
 }
 function broadcastDice(title,total,detail,cls=""){
  if(socket&&socket.readyState===1&&room)socket.send(JSON.stringify({type:"dice",room,title,total,detail,cls}));
@@ -589,6 +608,7 @@ $("#copyInvite").addEventListener("click",async()=>{
 
 // Hook state-changing render calls into network synchronization.
 function refreshRole(){
+ refreshScenes();
  const player=!gmAccess();document.body.classList.toggle("player-sidebar",player);
  if(player&&!["select","pan"].includes(tool)){tool="select";drag=null;document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("active",b.dataset.tool==="select"));stage.style.cursor="default";}
 
@@ -966,6 +986,7 @@ if(imageUploadBtn && imageFile){
 // --- Local battle autosave ---
 const LOCAL_SAVE_KEY="swade-map-forge-battle-draft-v1";
 function battleSnapshot(){
+ captureScene();
  return {format:"swade-map-forge-battle",version:2,gmNotes:gmAccess()?gmNotes:{},state,initDeck,initDrawn,initNameIndex,initTurnIndex,combatRound,heldTurns,interruptedTurnStack,jokerUsed,panX,panY,zoom,
    view:{grid:$("#gridToggle").checked,snap:$("#snap").checked},
    dice:{mod:$("#diceMod").value,trait:$("#traitDie").value,wild:$("#wildDie").checked,acing:$("#acing").checked}};
@@ -973,6 +994,7 @@ function battleSnapshot(){
 function restoreBattle(data){
  // Validate the whole payload before changing the current battle.
  const d=JSON.parse(JSON.stringify(data)),st=d.state||d;
+ validateScenes(st);
  const finite=n=>typeof n==="number"&&Number.isFinite(n);
  const card=c=>c&&((c.joker===true)||(initSuits.includes(c.suit)&&initRanks.includes(c.rank)));
  if(!st||!Array.isArray(st.items)||![st.cols,st.rows,st.cell].every(n=>finite(n)&&n>0)||!Number.isInteger(st.cols)||!Number.isInteger(st.rows))throw Error();
@@ -1022,6 +1044,65 @@ function loadBattleLocal(){
 setInterval(saveBattleLocal,5000);
 window.addEventListener("beforeunload",saveBattleLocal);
 setTimeout(loadBattleLocal,100);
+
+function sceneMap(){
+ const {scenes,activeSceneId,battleLog,...mapData}=state;
+ return JSON.parse(JSON.stringify({...mapData,battleSession:{initDeck,initDrawn,initNameIndex,initTurnIndex,combatRound,heldTurns,interruptedTurnStack,jokerUsed},camera:{panX,panY,zoom}}));
+}
+function captureScene(){
+ if(!state.scenes){state.activeSceneId=uid();state.scenes=[{id:state.activeSceneId,name:"Сцена 1",map:null}]}
+ const active=state.scenes.find(s=>s.id===state.activeSceneId);if(active)active.map=sceneMap();
+}
+function refreshScenes(){
+ const select=$("#sceneSelect");if(!select)return;
+ // Old maps gain their first scene on the next save or scene action.
+ const scenes=state.scenes||[{id:"",name:"Сцена 1"}];
+ const signature=JSON.stringify(scenes.map(s=>[s.id,s.name]));if(select.dataset.signature!==signature){select.replaceChildren();for(const s of scenes)select.add(new Option(s.name,s.id));select.dataset.signature=signature}
+ select.value=state.activeSceneId||"";select.disabled=!gmAccess();$("#sceneAdd").classList.toggle("hidden",!gmAccess());$("#sceneRename").classList.toggle("hidden",!gmAccess());
+}
+function switchScene(id){
+ if(!gmAccess()||id===state.activeSceneId)return;
+ captureScene();const target=state.scenes.find(s=>s.id===id);if(!target?.map)return;
+ const scenes=state.scenes,log=state.battleLog||[];state={...JSON.parse(JSON.stringify(target.map)),scenes,activeSceneId:id,battleLog:log};
+ selected=null;drag=null;history=[];future=[];panX=state.camera?.panX??35;panY=state.camera?.panY??35;zoom=state.camera?.zoom??1;
+ applyRoomBattle();syncInputs();render();journal("Сцена: "+target.name);saveBattleLocal();
+}
+function validateScenes(st){
+ if(!st.scenes)return;
+ if(!Array.isArray(st.scenes)||!st.scenes.length||st.scenes.length>50)throw Error("Сцены");
+ const ids=new Set();
+ for(const s of st.scenes){
+  if(!s||typeof s.id!=="string"||ids.has(s.id)||typeof s.name!=="string"||!s.map||s.map.scenes)throw Error("Сцена");ids.add(s.id);
+  const m=s.map;if(![m.cols,m.rows,m.cell].every(n=>Number.isFinite(n)&&n>0)||!Array.isArray(m.items))throw Error("Карта сцены");
+  if(!m.items.every(t=>t&&typeof t.id==="string"&&[t.x,t.y,t.w,t.h].every(Number.isFinite)&&t.w>0&&t.h>0))throw Error("Объект сцены");
+  const b=m.battleSession;if(!b||![b.initDeck,b.initDrawn,b.heldTurns,b.interruptedTurnStack,b.jokerUsed].every(Array.isArray)||!Number.isInteger(b.initTurnIndex)||b.initTurnIndex < -1||b.initTurnIndex>=b.initDrawn.length)throw Error("Бой сцены");
+  const validCard=c=>c&&(c.joker===true||(initSuits.includes(c.suit)&&initRanks.includes(c.rank)));
+  if(!b.initDeck.every(validCard)||!b.initDrawn.every(e=>e&&typeof e.name==="string"&&validCard(e.card))||!Number.isInteger(b.combatRound)||b.combatRound<1)throw Error("Карты сцены");
+  for(const list of [b.heldTurns,b.interruptedTurnStack,b.jokerUsed])if(!list.every(i=>Number.isInteger(i)&&i>=0&&i<b.initDrawn.length))throw Error("Ходы сцены");
+ }
+ if(!ids.has(st.activeSceneId))throw Error("Активная сцена");
+}
+$("#sceneSelect").addEventListener("change",e=>switchScene(e.target.value));
+$("#sceneAdd").addEventListener("click",()=>{
+ if(!gmAccess())return;captureScene();if(state.scenes.length>=50){alert("В сохранении может быть до 50 сцен.");return}
+ const name=prompt("Название новой сцены",`Сцена ${state.scenes.length+1}`)?.trim();if(!name)return;
+ const id=uid(),empty={cols:30,rows:22,cell:48,items:[],mapImage:null,battleSession:{initDeck:[],initDrawn:[],initNameIndex:0,initTurnIndex:-1,combatRound:1,heldTurns:[],interruptedTurnStack:[],jokerUsed:[]}};
+ state.scenes.push({id,name:name.slice(0,80),map:empty});switchScene(id);initFresh();saveBattleLocal();broadcastState();
+});
+$("#sceneRename").addEventListener("click",()=>{if(!gmAccess())return;captureScene();const s=state.scenes.find(s=>s.id===state.activeSceneId);const name=prompt("Название сцены",s.name)?.trim();if(name){s.name=name.slice(0,80);render();journal("Сцена переименована: "+s.name)}});
+$("#portraitUpload").addEventListener("click",()=>{if(gmAccess()&&selectedToken())$("#portraitFile").click()});
+$("#portraitRemove").addEventListener("click",()=>{const t=selectedToken();if(!gmAccess()||!t?.portrait)return;remember();delete t.portrait;render();journal("Портрет убран: "+(t.name||"Токен"))});
+$("#portraitFile").addEventListener("change",async e=>{
+ const f=e.target.files[0],id=selected,sceneId=state.activeSceneId;e.target.value="";if(!f||!gmAccess())return;
+ if(!["image/png","image/jpeg","image/webp"].includes(f.type)||f.size>15*1024*1024){$("#portraitNotice").textContent="Выберите PNG, JPEG или WebP размером до 15 МБ.";return}
+ const url=URL.createObjectURL(f);try{
+  const img=new Image();img.src=url;await img.decode();
+  const t=state.items.find(t=>t.id===id&&t.type==="token");if(!gmAccess()||!t||sceneId!==state.activeSceneId)return;
+  const c=document.createElement("canvas");c.width=c.height=256;const ctx=c.getContext("2d"),side=Math.min(img.naturalWidth,img.naturalHeight);
+  ctx.drawImage(img,(img.naturalWidth-side)/2,(img.naturalHeight-side)/2,side,side,0,0,256,256);remember();t.portrait=c.toDataURL("image/webp",.85);render();journal("Портрет загружен: "+(t.name||"Токен"));$("#portraitNotice").textContent="Портрет сохранён вместе с токеном.";
+ }catch{$("#portraitNotice").textContent="Не удалось открыть изображение."}finally{URL.revokeObjectURL(url)}
+});
+refreshScenes();
 
 </script>
 </body>
