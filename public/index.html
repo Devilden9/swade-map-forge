@@ -115,6 +115,7 @@ body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="
 .token.incapacitated .portrait{display:none}.token.incapacitated .portraitName{display:block}
 .portraitName{display:none}.sceneControls{display:flex;gap:5px;align-items:center}.sceneControls select{max-width:180px}
 .mpPanel{max-height:calc(100% - 36px);overflow:auto}
+.token.gmHidden{opacity:.45;border-style:dashed}.hiddenTokenTag{position:absolute;right:2px;top:2px;font-size:10px;background:#171c22;color:white;pointer-events:none}
 </style>
 </head>
 <body>
@@ -231,7 +232,7 @@ body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="
    <div class="row"><div><label>Ширина</label><input id="pW" type="number"></div><div><label>Высота</label><input id="pH" type="number"></div></div>
    <label>Поворот, °</label><input id="pR" type="number">
    <div id="tokenExtras" class="hidden">
- <div id="portraitControls"><label>Портрет токена</label><button id="portraitUpload" type="button">Загрузить портрет</button><button id="portraitRemove" type="button">Убрать</button><input id="portraitFile" type="file" accept="image/png,image/jpeg,image/webp" hidden><p id="portraitNotice" class="hint" role="status"></p></div><label>Фишки</label><div style="display:flex;gap:10px;align-items:center"><button id="bennyMinus" type="button" aria-label="Потратить фишку">−</button><b id="bennyCount">0</b><button id="bennyPlus" type="button" aria-label="Добавить фишку">+</button></div><p class="hint">Игрок тратит фишки. GM добавляет и убавляет.</p>
+ <button id="tokenVisibility" type="button" style="width:100%;margin:8px 0">Скрыть от игроков</button><p id="visibilityHint" class="hint"></p><div id="portraitControls"><label>Портрет токена</label><button id="portraitUpload" type="button">Загрузить портрет</button><button id="portraitRemove" type="button">Убрать</button><input id="portraitFile" type="file" accept="image/png,image/jpeg,image/webp" hidden><p id="portraitNotice" class="hint" role="status"></p></div><label>Фишки</label><div style="display:flex;gap:10px;align-items:center"><button id="bennyMinus" type="button" aria-label="Потратить фишку">−</button><b id="bennyCount">0</b><button id="bennyPlus" type="button" aria-label="Добавить фишку">+</button></div><p class="hint">Игрок тратит фишки. GM добавляет и убавляет.</p>
  <p id="tokenMovement" class="hint"></p><div id="gmNotesBox"><label for="gmNotes">Заметки GM</label><textarea id="gmNotes" placeholder="Броня, защита, оружие, особенности…"></textarea><p class="hint">Заметки хранятся у GM и не отправляются в комнату.</p></div></div>
  <button id="duplicateToken" type="button" style="width:100%;margin-top:10px">Дублировать токен</button><div id="duplicateHint" class="hint" role="status"></div>
    <button id="delete" style="width:100%;margin-top:10px">Удалить</button>
@@ -291,6 +292,8 @@ function renderJournal(){
 function canControlToken(t){return !!t&&t.type==="token"&&(gmAccess()||(window.networkRoleActive&&roomPlayers.some(p=>p.id===myClientId&&p.tokenId===t.id)))}
 function sendTokenValues(t,values){if(socket?.readyState===1&&canControlToken(t)){socket.send(JSON.stringify({type:"updateToken",tokenId:t.id,values}));return true}return false}
 function refreshExtras(){
+ const visibilityToken=current();$("#tokenVisibility").classList.toggle("hidden",!gmAccess()||visibilityToken?.type!=="token");$("#visibilityHint").classList.toggle("hidden",!gmAccess()||visibilityToken?.type!=="token");
+ $("#tokenVisibility").textContent=visibilityToken?.hidden?"Показать игрокам":"Скрыть от игроков";$("#tokenVisibility").setAttribute("aria-pressed",String(!!visibilityToken?.hidden));$("#visibilityHint").textContent=visibilityToken?.hidden?"Токен виден только GM.":"Токен виден игрокам.";
  const allowed=canControlToken(current());$("#portraitControls").classList.toggle("hidden",!allowed);
  $("#pName").disabled=!allowed;for(const id of ["pX","pY","pW","pH","pR"])$("#"+id).disabled=!gmAccess();
  const t=current(),token=t?.type==="token";$("#tokenExtras").classList.toggle("hidden",!token);
@@ -324,6 +327,7 @@ function render(){
  for(const it of state.items){
    const e=document.createElement("div"); e.className="entity "+it.type+(it.id===selected?" selected":"");
    if(it.type==="token"&&(it.conditions?.dead||it.conditions?.unconscious))e.classList.add("incapacitated");
+   if(it.type==="token"&&it.hidden)e.classList.add("gmHidden");
    e.dataset.id=it.id; e.style.left=it.x+"px";e.style.top=it.y+"px";e.style.width=it.w+"px";e.style.height=it.h+"px";e.style.transform=`rotate(${it.r||0}deg)`;
    if(it.type==="token"){
    e.textContent=it.name||"PC";
@@ -331,7 +335,7 @@ function render(){
      e.replaceChildren();const img=document.createElement("img");img.className="portrait";img.src=it.portrait;img.alt=it.name||"Токен";e.appendChild(img);const label=document.createElement("span");label.className="portraitName";label.textContent=it.name||"PC";e.appendChild(label);
    }
  } if(it.type==="prop")e.textContent=it.name||"OBJ";
-   map.appendChild(e);
+   if(it.type==="token"&&it.hidden){const badge=document.createElement("span");badge.className="hiddenTokenTag";badge.textContent="GM";e.appendChild(badge)}map.appendChild(e);
  }
  updateProps(); $("#status").textContent=Math.round(zoom*100)+"%";
 }
@@ -1109,6 +1113,7 @@ $("#sceneForm").addEventListener("submit",async e=>{
  }catch(err){$("#sceneError").textContent="Не удалось загрузить сцену. Проверьте изображение и повторите."}finally{$("#sceneSubmit").disabled=false}
 });
 $("#sceneRename").addEventListener("click",()=>{if(!gmAccess())return;captureScene();const s=state.scenes.find(s=>s.id===state.activeSceneId);const name=prompt("Название сцены",s.name)?.trim();if(name){s.name=name.slice(0,80);render();journal("Сцена переименована: "+s.name)}});
+$("#tokenVisibility").addEventListener("click",()=>{const t=selectedToken();if(!t||!gmAccess())return;remember();t.hidden=!t.hidden;render();journal(`${t.name||"Токен"}: ${t.hidden?"скрыт от игроков":"показан игрокам"}`)});
 $("#portraitUpload").addEventListener("click",()=>{if(canControlToken(selectedToken()))$("#portraitFile").click()});
 $("#portraitRemove").addEventListener("click",()=>{const t=selectedToken();if(!canControlToken(t)||!t?.portrait)return;if(window.networkRoleActive&&!isGM){sendTokenValues(t,{portrait:null});return}remember();delete t.portrait;render();journal("Портрет убран: "+(t.name||"Токен"))});
 $("#portraitFile").addEventListener("change",async e=>{
@@ -1126,4 +1131,5 @@ refreshScenes();
 </script>
 </body>
 </html>
+
 

@@ -8,15 +8,51 @@ const fs = require("fs");
 const server = http.createServer((req,res)=>{res.setHeader("Content-Type","text/html; charset=utf-8");fs.createReadStream(path.join(__dirname,"public/index.html")).pipe(res)});
 const wss = new WebSocketServer({ server, path: "/ws" });
 
-const rooms = new Map();
+const {RoomStore}=require("./room-store");
+const dataDir=process.env.ROOM_DATA_DIR||process.env.RAILWAY_VOLUME_MOUNT_PATH||path.join(__dirname,"data");
+if(process.env.RAILWAY_ENVIRONMENT_ID&&!process.env.ROOM_DATA_DIR&&!process.env.RAILWAY_VOLUME_MOUNT_PATH)throw Error("Persistent volume is required for Railway deployment");
+const roomStore=new RoomStore(dataDir);
+const rooms=roomStore.load();
+let shuttingDown=false;
+console.log(`Restored ${rooms.size} room(s) from persistent storage`);
 function getRoom(code){
-  if(!rooms.has(code)) rooms.set(code,{state:null,clients:new Map(),gmId:null,turnClientId:null,deck:[],discard:[],emptySince:null});
+  if(!rooms.has(code)) rooms.set(code,{code,state:null,clients:new Map(),gmId:null,turnClientId:null,deck:[],discard:[],emptySince:null});
   return rooms.get(code);
 }
-function send(ws,obj){ if(ws?.readyState===1) ws.send(JSON.stringify(obj)); }
+function visibleState(room,viewerId){
+ if(viewerId===room.gmId)return room.state;
+ if(!room.state)return null;
+ const copy=JSON.parse(JSON.stringify(room.state));
+ const hiddenIds=new Set(),hiddenNames=new Set();
+ for(const m of [copy,...(copy.scenes||[]).map(s=>s.map)])for(const t of m?.items||[])if(t.type==="token"&&t.hidden){hiddenIds.add(t.id);if(t.name)hiddenNames.add(t.name)}
+ function filterMap(m){
+  if(!m)return;
+  m.items=(m.items||[]).filter(t=>!hiddenIds.has(t.id));
+  const b=m.battleSession;if(!b)return;
+  const drawn=b.initDrawn||[],power=c=>c.joker?100:({"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,J:11,Q:12,K:13,A:14}[c.rank]*10+{"♣":1,"♠":2,"♦":3,"♥":4}[c.suit]);
+  const sorted=drawn.map((e,i)=>({...e,i})).sort((a,b)=>power(b.card)-power(a.card));const active=sorted[b.initTurnIndex]?.i;
+  const indexMap=new Map();b.initDrawn=drawn.filter((e,i)=>{if(hiddenIds.has(e.tokenId))return false;indexMap.set(i,indexMap.size);return true});
+  for(const k of ["heldTurns","interruptedTurnStack","jokerUsed"])b[k]=(b[k]||[]).filter(i=>indexMap.has(i)).map(i=>indexMap.get(i));
+  const order=b.initDrawn.map((e,i)=>({...e,i})).sort((a,b)=>power(b.card)-power(a.card));b.initTurnIndex=indexMap.has(active)?order.findIndex(e=>e.i===indexMap.get(active)):-1;
+ }
+ filterMap(copy);for(const scene of copy.scenes||[])filterMap(scene.map);
+ copy.battleLog=(copy.battleLog||[]).filter(r=>![...hiddenNames].some(n=>String(r.text).includes(n)));
+ return copy;
+}
+function payloadFor(room,viewerId,obj){
+ if(viewerId===room.gmId)return obj;
+ const out={...obj};if(Object.hasOwn(out,"state"))out.state=visibleState(room,viewerId);
+ if(out.type==="players")out.players=out.players.map(p=>{const t=room.state?.items?.find(t=>t.id===p.tokenId);return t?.hidden?{...p,tokenId:null,isTurn:false}:p});
+ if(out.type==="tokenMoved"&&room.state?.items?.find(t=>t.id===out.tokenId)?.hidden)return null;
+ return out;
+}
+function send(ws,obj){
+ const room=rooms.get(ws.roomCode);if(room)roomStore.save(room);
+ const data=room?payloadFor(room,ws.clientId,obj):obj;if(data&&ws?.readyState===1)ws.send(JSON.stringify(data));
+}
 function broadcast(room,obj,except=null){
-  const data=JSON.stringify(obj);
-  for(const [id,c] of room.clients) if(id!==except && c.ws?.readyState===1) c.ws.send(data);
+ roomStore.save(room);
+ for(const [id,c] of room.clients){if(id===except||c.ws?.readyState!==1)continue;const data=payloadFor(room,id,obj);if(data)c.ws.send(JSON.stringify(data))}
 }
 function ensurePlayerTokens(room){
  if(!room.state)return false;
@@ -48,18 +84,20 @@ wss.on("connection", ws=>{
   let joinedCode=null;
   ws.on("message", raw=>{
     let msg; try{msg=JSON.parse(raw)}catch{return}
+    if(shuttingDown||!msg||typeof msg!=="object")return;
+    try{
     if(msg.type==="join"){
       const code=String(msg.room||"").toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
       if(!code) return send(ws,{type:"error",message:"Неверный код комнаты."});
       if(joinedCode)return;
       if(!String(msg.name||"").trim())return send(ws,{type:"error",message:"Введите имя."});
-      joinedCode=code; const room=getRoom(code);
+      joinedCode=code;ws.roomCode=code; const room=getRoom(code);
       const resumed=[...room.clients].find(([,c])=>typeof msg.resumeToken==="string"&&c.resumeToken===msg.resumeToken);
       let cl;
       if(resumed){clientId=resumed[0];cl=resumed[1];const old=cl.ws;cl.ws=ws;cl.lastSeen=Date.now();if(old&&old!==ws)old.close(4001,"Opened in another tab");}
       else{cl={ws,name:String(msg.name).trim().slice(0,32),tokenId:null,tokensByScene:{},resumeToken:crypto.randomBytes(32).toString("hex"),lastSeen:Date.now()};room.clients.set(clientId,cl)}
-      room.emptySince=null;
-      if(!room.gmId||!room.clients.get(room.gmId)?.ws)room.gmId=clientId;
+      ws.clientId=clientId;room.emptySince=null;
+      if(!room.gmId)room.gmId=clientId;
       const tokensCreated=ensurePlayerTokens(room);syncActiveScene(room);
       send(ws,{type:"welcome",clientId,name:cl.name,resumeToken:cl.resumeToken,resumed:!!resumed,isGM:room.gmId===clientId,state:room.state,turnClientId:room.turnClientId});
       if(tokensCreated)broadcast(room,{type:"state",clientId:"server",state:room.state});
@@ -76,6 +114,7 @@ wss.on("connection", ws=>{
       if(![1,-1].includes(delta)||!room.state)return;
       if(clientId!==room.gmId&&(delta!==-1||cl.tokenId!==msg.tokenId))return send(ws,{type:"error",message:"Игрок может тратить только свои фишки."});
       const t=room.state.items?.find(t=>t.type==="token"&&t.id===msg.tokenId);if(!t)return;
+      if(t.hidden&&clientId!==room.gmId)return;
       const count=Math.max(0,Math.floor(Number(t.bennies)||0));if(count+delta<0)return;
       t.bennies=count+delta;
       room.state.battleLog=room.state.battleLog||[];
@@ -108,7 +147,7 @@ wss.on("connection", ws=>{
       broadcast(room,{type:"players",players:players(room)});
     } else if(msg.type==="updateToken" && joinedCode){
       const room=getRoom(joinedCode),cl=room.clients.get(clientId),t=room.state?.items?.find(t=>t.id===msg.tokenId&&t.type==="token");
-      if(!t||(clientId!==room.gmId&&cl.tokenId!==t.id))return;
+      if(!t||(clientId!==room.gmId&&(cl.tokenId!==t.id||t.hidden)))return;
       const v=msg.values||{};
       const before=JSON.stringify(t),nameBefore=t.name||"Токен";
       if(typeof v.name==="string")t.name=v.name.slice(0,80);
@@ -122,7 +161,7 @@ wss.on("connection", ws=>{
     } else if(msg.type==="moveToken" && joinedCode){
       const room=getRoom(joinedCode), cl=room.clients.get(clientId);
       if(!cl||(room.turnClientId&&room.turnClientId!==clientId)||!cl.tokenId||cl.tokenId!==msg.tokenId||!room.state)return;
-      const it=room.state.items?.find(x=>x.id===cl.tokenId&&x.type==="token"); if(!it)return;
+      const it=room.state.items?.find(x=>x.id===cl.tokenId&&x.type==="token"); if(!it||it.hidden&&clientId!==room.gmId)return;
       if(!Number.isFinite(msg.x)||!Number.isFinite(msg.y))return;
       it.x=Math.max(0,Math.min(room.state.cols*room.state.cell-it.w,msg.x));it.y=Math.max(0,Math.min(room.state.rows*room.state.cell-it.h,msg.y));syncActiveScene(room);
       broadcast(room,{type:"tokenMoved",clientId,tokenId:it.id,x:it.x,y:it.y});
@@ -137,17 +176,25 @@ wss.on("connection", ws=>{
       const room=getRoom(joinedCode), c=room.clients.get(clientId);
       broadcast(room,{type:"dice",clientId,name:c?.name||"Игрок",title:msg.title,total:msg.total,detail:msg.detail,cls:msg.cls},clientId);
     }
+    if(joinedCode&&rooms.has(joinedCode))roomStore.save(rooms.get(joinedCode));
+    }catch(err){console.error("Room update could not be saved:",err.message);if(ws.readyState===1)ws.send(JSON.stringify({type:"error",message:"Не удалось сохранить комнату на сервере. Сохраните бой в файл и повторите позже."}))}
   });
   ws.on("close",()=>{
-    if(!joinedCode)return; const room=rooms.get(joinedCode); if(!room)return;
+    if(shuttingDown||!joinedCode)return; const room=rooms.get(joinedCode); if(!room)return;
     const cl=room.clients.get(clientId);if(!cl||cl.ws!==ws)return;cl.ws=null;cl.lastSeen=Date.now();
     if(room.gmId===clientId)room.gmId=[...room.clients].find(([,c])=>c.ws?.readyState===1)?.[0]||clientId;
     if(![...room.clients.values()].some(c=>c.ws?.readyState===1))room.emptySince=Date.now();
-    broadcast(room,{type:"players",players:players(room)});
+    try{broadcast(room,{type:"players",players:players(room)})}catch(err){console.error("Could not save disconnected room:",err.message)}
   });
 });
-// Keep rooms and reconnect credentials for 24 hours after the last disconnect (in memory).
-setInterval(()=>{for(const [code,r] of rooms){if(r.emptySince&&Date.now()-r.emptySince>86400000)rooms.delete(code)}},60000).unref();
+// Persistent rooms are not automatically deleted after 24 hours.
+function shutdown(){
+ if(shuttingDown)return;shuttingDown=true;
+ try{for(const room of rooms.values())roomStore.save(room)}catch(err){console.error("Final room save failed:",err.message);process.exitCode=1}
+ for(const ws of wss.clients)ws.close(1012,"Server restarting");
+ server.close(()=>process.exit(process.exitCode||0));setTimeout(()=>process.exit(process.exitCode||0),5000).unref();
+}
+process.on("SIGTERM",shutdown);process.on("SIGINT",shutdown);
 const heartbeat=setInterval(()=>{for(const ws of wss.clients){if(ws.alive===false){ws.terminate();continue}ws.alive=false;ws.ping()}},30000);heartbeat.unref();
 wss.on("connection",ws=>{ws.alive=true;ws.on("pong",()=>ws.alive=true);ws.on("error",()=>{})});
 const PORT=process.env.PORT||3000;
