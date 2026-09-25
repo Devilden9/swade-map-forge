@@ -107,6 +107,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #gmNotes{width:100%;min-height:95px;background:#0f1318;color:#eee;border:1px solid #414b57;padding:8px;resize:vertical}
 #moveReadout{position:absolute;left:18px;top:18px;background:#171c22eF;padding:8px;border-radius:6px;pointer-events:none;z-index:40}
 dialog{background:#171c22;color:#eee;border:1px solid #647080;border-radius:12px;width:360px}dialog::backdrop{background:#000b}#nameForm button{margin-top:14px}
+
+body.player-sidebar .left > :not(:first-child){display:none!important}
+body.player-sidebar .left [data-tool]:not([data-tool="select"]):not([data-tool="pan"]){display:none!important}
 </style>
 </head>
 <body>
@@ -586,6 +589,9 @@ $("#copyInvite").addEventListener("click",async()=>{
 
 // Hook state-changing render calls into network synchronization.
 function refreshRole(){
+ const player=!gmAccess();document.body.classList.toggle("player-sidebar",player);
+ if(player&&!["select","pan"].includes(tool)){tool="select";drag=null;document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("active",b.dataset.tool==="select"));stage.style.cursor="default";}
+
  $("#localRoleLabel").classList.toggle("hidden",!!window.networkRoleActive);
  for(const id of ["undo","redo","load","save","duplicateToken"])$("#"+id).disabled=!gmAccess();
  refreshExtras();
