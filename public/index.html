@@ -320,8 +320,9 @@ function refreshTokenProfile(){const t=selectedToken(),gm=gmAccess(),profile=tok
 function refreshExtras(){
  const visibilityToken=current();$("#tokenVisibility").classList.toggle("hidden",!gmAccess()||visibilityToken?.type!=="token");$("#visibilityHint").classList.toggle("hidden",!gmAccess()||visibilityToken?.type!=="token");
  $("#tokenVisibility").textContent=visibilityToken?.hidden?"Показать игрокам":"Скрыть от игроков";$("#tokenVisibility").setAttribute("aria-pressed",String(!!visibilityToken?.hidden));$("#visibilityHint").textContent=visibilityToken?.hidden?"Токен виден только GM.":"Токен виден игрокам.";
- const allowed=canControlToken(current());$("#portraitControls").classList.toggle("hidden",!allowed);
- $("#pName").disabled=!allowed;for(const id of ["pX","pY","pW","pH","pR"])$("#"+id).disabled=!gmAccess();
+ const selectedItem=current(),allowed=canControlToken(selectedItem);$("#portraitControls").classList.toggle("hidden",!allowed);
+ // A token belongs to its owner or the GM; map objects may be named by the GM.
+ $("#pName").disabled=selectedItem?.type==="token"?!allowed:!gmAccess();for(const id of ["pX","pY","pW","pH","pR"])$("#"+id).disabled=!gmAccess();
  const t=current(),token=t?.type==="token";$("#tokenExtras").classList.toggle("hidden",!token);
  if(!token)return;
  const gm=gmAccess(),count=Math.max(0,Math.floor(Number(t.bennies)||0));
